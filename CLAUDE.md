@@ -307,11 +307,23 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Text format:
   ```
   Gridion Drive #<n> 🏈
-  TOUCHDOWN · W 24–21 · 375 pts        (or: STALLED at OPP 24 · L 17–21 · 255 pts)
+  <result line>
   <7 tier squares>
   gridion.io
   ```
+- Result line (see *Drive outcome* below):
+  - TD on play 7: `TOUCHDOWN · W 24–21 · 375 pts`
+  - TD before play 7: `TOUCHDOWN on P5 · W 24–21 · 410 pts`
+  - No TD: `STALLED at <ball spot> · L 17–21 · <pts> pts`, e.g. `STALLED at OPP 24 · L 17–21 · 255 pts`
 - Tier squares, one per prompt in order: ⬜ Starter · 🟦 Backup · 🟩 Hidden Gem · 🟪 Sleeper Pick · 🟨 YKB Kid · 🟧 Botched Trick Play · ⬛ Incomplete.
+
+**Drive outcome** (how a game becomes the drive in the share line)
+- **Yards per answer = tier points ÷ 5:** Starter 2 · Botched Trick Play 3 · Backup 6 · Hidden Gem 12 · Sleeper Pick 17 · YKB Kid 20 · invalid / no answer 0.
+- **Game state:** the player trails **17–21**, 4th quarter, **2:55** left, ball on their **own 25**.
+- **Touchdown** = 75 cumulative yards (= 375 points) → final **W 24–21**. No TD after 7 plays → final **L 17–21** (down 4, so a field goal never wins).
+- **Clock:** 2:55 minus 0:25 per play, reaching 0:00 after play 7.
+- **Ball spot** (yardline = 25 + cumulative yards): below 50 → `OWN x`; 50 → `MIDFIELD`; above 50 → `OPP (100 − x)`.
+- **TD before play 7:** all 7 plays are still played and scored. The ball stays in the end zone, the remaining plays show as running out the clock, and the result reads `TOUCHDOWN on P<n>`.
 
 **Drive, streak, record**
 - **Drive #** = days since launch, the same for everyone.
@@ -320,7 +332,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 **Anonymous answer logging**
 - For every submitted answer, record **prompt id**, **matched player id** (or `invalid`), and **tier**. Nothing else: no accounts, no personal data, no device or user identifiers.
 - Used for pick stats and for tuning the formula after launch (§1, §7).
-- Hosting: proposed in §11, not built yet.
+- **Hosting (decided):** the static game on **Cloudflare Pages** at gridion.io; logging on a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`; `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable briefly). Per-IP rate limiting at the Worker; IPs are not stored. Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy.
 
 **Out (later):** accounts, unlimited mode, archive, leaderboards, themed packs.
 
@@ -343,5 +355,3 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - ~~Game title~~ — **resolved:** Gridion (gridion.io)
-- **Drive outcome and score mapping (needed for Share):** how the 7 picks become `TOUCHDOWN` / `STALLED at OPP 24`, the `W 24–21` / `L 17–21` scoreline, and the W–L result isn't defined yet. Points (375, 255) come from tier points (§2).
-- **Answer-logging hosting (proposal):** host the static game on **Cloudflare Pages** at gridion.io and log answers to a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`. `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable for a minute or so). Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy. Add per-IP rate limiting at the Worker to keep junk out, and don't store IPs. Fallback if we'd rather not use Cloudflare: Supabase (Postgres + an insert-only policy).
