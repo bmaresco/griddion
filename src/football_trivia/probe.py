@@ -13,7 +13,7 @@ import sys
 
 import polars as pl
 
-from .answers import MAX_ANSWERS, MIN_ANSWERS, Prompt, Result, build_answers
+from .answers import DAY_AVG_MAX, MIN_ANSWERS, Prompt, Result, build_answers
 from .db import connect
 
 SAMPLE = 8
@@ -38,9 +38,8 @@ def _names(df: pl.DataFrame, n: int) -> str:
 
 def report(r: Result, show_all: bool = False) -> str:
     p, a = r.prompt, r.answers
-    ok = "✅ in range" if MIN_ANSWERS <= r.n <= MAX_ANSWERS else ("⛔ below minimum" if r.n < MIN_ANSWERS else "⚠️ above maximum")
-    out = [f'"{p.text or p.id}"  →  {_describe(p.filters)}',
-           f"Valid answers: {r.n}   {ok} ({MIN_ANSWERS}–{MAX_ANSWERS})"]
+    ok = f"✅ (≥ {MIN_ANSWERS})" if r.n >= MIN_ANSWERS else f"⛔ below minimum ({MIN_ANSWERS})"
+    out = [f'"{p.text or p.id}"  →  {_describe(p.filters)}', f"Valid answers: {r.n}   {ok}"]
     if r.n:
         out += [f"Sample (most known): {_names(a, SAMPLE)}",
                 f"Sample (least known): {_names(a.reverse(), SAMPLE)}"]
@@ -69,21 +68,34 @@ def report(r: Result, show_all: bool = False) -> str:
 
 
 def batch(con, path: str) -> str:
+    """One prompt JSON per line; an optional "day" key groups prompts for the per-day check."""
     rows = []
     for line in open(path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        p = Prompt.from_json(line)
+        obj = json.loads(line)
+        p = Prompt.from_json(obj)
+        row = {"day": obj.get("day"), "prompt": (p.text or p.id)[:52]}
         try:
             r = build_answers(con, p)
-            status = "ok" if MIN_ANSWERS <= r.n <= MAX_ANSWERS else ("STOP" if r.n < MIN_ANSWERS else "big")
-            rows.append({"prompt": (p.text or p.id)[:48], "answers": r.n, "status": status,
-                         "top": _names(r.answers, 3)[:40], "flags": len(r.warnings)})
+            row |= {"answers": r.n, "status": "ok" if r.n >= MIN_ANSWERS else "STOP",
+                    "top": _names(r.answers, 3)[:40], "warnings": "; ".join(r.warnings)[:60]}
         except Exception as ex:  # keep going; report the bad prompt
-            rows.append({"prompt": (p.text or p.id)[:48], "answers": -1, "status": f"error: {ex}"[:40], "top": "", "flags": 0})
-    with pl.Config(tbl_rows=-1, tbl_width_chars=200, fmt_str_lengths=50):
-        return str(pl.DataFrame(rows))
+            row |= {"answers": None, "status": "error", "top": "", "warnings": str(ex)[:60]}
+        rows.append(row)
+    df = pl.DataFrame(rows)
+    out = []
+    with pl.Config(tbl_rows=-1, tbl_width_chars=220, fmt_str_lengths=60):
+        out.append(str(df))
+        if df["day"].drop_nulls().len():
+            days = df.group_by("day", maintain_order=True).agg(
+                pl.len().alias("prompts"), pl.col("answers").mean().round(1).alias("avg_answers"),
+                (pl.col("status") != "ok").sum().alias("below_min_or_error"))
+            days = days.with_columns(check=pl.when(pl.col("avg_answers") > DAY_AVG_MAX)
+                                     .then(pl.lit(f"⚠️ avg > {DAY_AVG_MAX}")).otherwise(pl.lit("ok")))
+            out.append(str(days))
+    return "\n".join(out)
 
 
 def main(argv: list[str] | None = None) -> None:

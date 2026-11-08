@@ -30,7 +30,8 @@ import polars as pl
 
 from .sources.wikipedia import AP_FIRST_SEASON
 
-MIN_ANSWERS, MAX_ANSWERS = 25, 300
+MIN_ANSWERS = 25        # per prompt, hard stop (§6)
+DAY_AVG_MAX = 300       # average across a day's prompts, warning only (§6)
 QB_LIST_FIRST_SEASON = 1950
 STATS_FIRST_SEASON = 1999
 POSITION_GROUPS = {"QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB", "K", "P", "LS"}
@@ -287,6 +288,4 @@ def _qb_mismatches(con, f: dict, answers: pl.DataFrame) -> pl.DataFrame:
 def _range_warnings(n: int) -> list[str]:
     if n < MIN_ANSWERS:
         return [f"HARD STOP: {n} valid answers (< {MIN_ANSWERS}). Widen or drop the prompt."]
-    if n > MAX_ANSWERS:
-        return [f"{n} valid answers (> {MAX_ANSWERS}): too many to review and alias well."]
     return []

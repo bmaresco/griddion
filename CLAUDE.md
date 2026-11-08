@@ -145,7 +145,7 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 
 ### Checks between steps
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
-- **> 300 valid answers → warning.** Too many to review and alias well.
+- **Per-day check: average valid answers across a day's 7 prompts > 300 → warning only.** Keeps a day reviewable and aliasable without capping any single prompt. (Replaces the earlier per-prompt 300 warning.)
 - **Diff report** against the last build (new or removed answers, tier changes).
 - **Tier spread warnings** (zero Starters, very top-heavy or bottom-heavy). These are warnings only. The spread is never forced.
 - **Human review** of every answer bank before publishing, to catch rule bugs and edge cases.
@@ -245,7 +245,7 @@ Claude's only job: translate the question into the filter format (§5), run `pro
 Output:
 ```
 "Name a 90s AFC QB"  →  conference=AFC, position=QB, seasons 1990–1999
-Valid answers: 214   ✅ in range (25–300)
+Valid answers: 214   ✅ (≥ 25)
 Sample (top):    Elway, Marino, Kelly …
 Sample (bottom): …
 Edge cases: N players with 0 starts excluded
