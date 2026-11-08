@@ -1,8 +1,8 @@
-# Gridion — Project Spec
+# Griddion — Project Spec
 
 A daily football trivia game. Each day has a set of prompts ("Name a Bears QB"). Players type one answer per prompt against a timer. Any valid answer scores, and **the more obscure the answer is for that specific question, the more it's worth.**
 
-> **Gridion** ([gridion.io](https://gridion.io)). Inspired by the rare-answer mechanic of Krillion, but uses none of its name, branding, or tier names.
+> **Griddion** ([griddion.io](https://griddion.io)). Inspired by the rare-answer mechanic of Krillion, but uses none of its name, branding, or tier names.
 
 ---
 
@@ -394,10 +394,10 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - `navigator.share()` on mobile; elsewhere copy to clipboard and show "Copied!".
 - Text format:
   ```
-  Gridion Drive #<n> 🏈
+  Griddion Drive #<n> 🏈
   <result line>
   <7 tier squares>
-  gridion.io
+  griddion.io
   ```
 - Result line (see *Drive outcome* below):
   - TD on play 7: `TOUCHDOWN · W 24–21 · 375 pts`
@@ -420,7 +420,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 **Anonymous answer logging**
 - For every submitted answer, record **prompt id**, **matched player id** (or `invalid`), and **tier**. Nothing else: no accounts, no personal data, no device or user identifiers.
 - Used for pick stats and for tuning the formula after launch (§1, §7).
-- **Hosting (decided):** the static game on **Cloudflare Pages** at gridion.io; logging on a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`; `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable briefly). Per-IP rate limiting at the Worker; IPs are not stored. Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy.
+- **Hosting (decided):** the static game on **Cloudflare Pages** at griddion.io; logging on a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`; `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable briefly). Per-IP rate limiting at the Worker; IPs are not stored. Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy.
 
 **Out (later):** accounts, unlimited mode, archive, leaderboards, themed packs.
 
@@ -443,4 +443,4 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - **Known limit: no `peak` before 1999.** Season stats start in 1999, so pre-1999 era prompts can't rescue a short, famous tenure with `peak`, and those players read as low association (e.g. Joe Montana's 1990 season on "NFC QB from the 1990s" is a 1-of-many-seasons stint: A ≈ 0.21). Revisit with real answer data after launch.
-- ~~Game title~~ — **resolved:** Gridion (gridion.io)
+- ~~Game title~~ — **resolved:** Griddion (griddion.io)

@@ -25,7 +25,7 @@ MIN_INTERVAL = float(os.environ.get("FT_MIN_INTERVAL", "0.3"))  # seconds betwee
 def session() -> requests.Session:
     global _session
     if _session is None:
-        contact = os.environ.get("FT_CONTACT", "https://github.com/bmaresco/gridion")
+        contact = os.environ.get("FT_CONTACT", "https://github.com/bmaresco/griddion")
         _session = requests.Session()
         _session.headers["User-Agent"] = f"football-trivia-refresh/0.1 ({contact})"
         adapter = requests.adapters.HTTPAdapter(pool_connections=16, pool_maxsize=16)
