@@ -200,9 +200,23 @@ def _seasons_games(con, log) -> None:
     CREATE OR REPLACE TABLE player_games AS
     WITH sched AS (SELECT game_id, season, week, game_type FROM raw_schedules),
     pfr_map AS (SELECT pfr_id, any_value(player_id) AS player_id FROM players WHERE pfr_id IS NOT NULL GROUP BY pfr_id HAVING count(*) = 1),
+    -- nflverse weekly stats sometimes swap team/opponent (mostly 2001-02, e.g. Renaldo Wynn's
+    -- JAX road games filed under the home team). If the row's team isn't one the player was
+    -- rostered with that season but the opponent is, use the opponent.
+    rostered AS (SELECT DISTINCT player_id, season, {fr('team', 'season')} AS franchise
+                 FROM _roster_rows WHERE player_id IS NOT NULL),
+    wk AS (
+        SELECT w.player_id, w.game_id, w.season, w.team, w.opponent_team,
+               {fr('w.team', 'w.season')} AS fr_team,
+               {fr('w.opponent_team', 'w.season')} AS fr_opp
+        FROM raw_player_week w WHERE w.game_id IS NOT NULL),
     src AS (
-        SELECT player_id, game_id, team AS team_code, 'stats' AS source
-        FROM raw_player_week WHERE game_id IS NOT NULL
+        SELECT wk.player_id, wk.game_id,
+               CASE WHEN rt.player_id IS NULL AND ro.player_id IS NOT NULL THEN wk.opponent_team ELSE wk.team END AS team_code,
+               'stats' AS source
+        FROM wk
+        LEFT JOIN rostered rt ON rt.player_id = wk.player_id AND rt.season = wk.season AND rt.franchise = wk.fr_team
+        LEFT JOIN rostered ro ON ro.player_id = wk.player_id AND ro.season = wk.season AND ro.franchise = wk.fr_opp
         UNION ALL
         SELECT m.player_id, s.game_id, s.team, 'snaps'
         FROM raw_snap_counts s JOIN pfr_map m ON m.pfr_id = s.pfr_player_id

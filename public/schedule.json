@@ -22,11 +22,6 @@
    "file": "days/4.json"
   },
   {
-   "drive": 5,
-   "date": "2026-11-13",
-   "file": "days/5.json"
-  },
-  {
    "drive": 6,
    "date": "2026-11-14",
    "file": "days/6.json"
@@ -37,19 +32,9 @@
    "file": "days/7.json"
   },
   {
-   "drive": 8,
-   "date": "2026-11-16",
-   "file": "days/8.json"
-  },
-  {
    "drive": 10,
    "date": "2026-11-18",
    "file": "days/10.json"
-  },
-  {
-   "drive": 11,
-   "date": "2026-11-19",
-   "file": "days/11.json"
   },
   {
    "drive": 12,
@@ -60,11 +45,6 @@
    "drive": 13,
    "date": "2026-11-21",
    "file": "days/13.json"
-  },
-  {
-   "drive": 14,
-   "date": "2026-11-22",
-   "file": "days/14.json"
   }
  ]
 }
