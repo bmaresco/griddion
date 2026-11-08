@@ -12,7 +12,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · Must have played in a regular-season game*
 3. **Name a player who played for the Raiders and the Chiefs**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Jets and the Patriots**
+4. **Name a skill player (RB/WR/TE) who played for the Jets and the Patriots**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an AFC QB from the 1990s**
    *1990–1999 seasons · QBs must have started a regular-season game*
@@ -28,7 +28,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name a player who played for the Cowboys and the Eagles**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Bills and the Jets**
+4. **Name a skill player (RB/WR/TE) who played for the Bills and the Jets**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an NFC RB from the 1980s**
    *1980–1989 seasons · Must have been on an active regular-season roster*
@@ -42,9 +42,9 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · QBs must have started a regular-season game*
 2. 🔥 **Name an AFC South RB**
    *2002–2026 seasons · Must have played in a regular-season game*
-3. **Name a skill player who played for the Bears and the Packers**
+3. **Name a skill player (RB/WR/TE) who played for the Bears and the Packers**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
-4. **Name a skill player who played for the Giants and Washington**
+4. **Name a skill player (RB/WR/TE) who played for the Giants and Washington**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. 🔥 **Name a QB from the 1970s**
    *1970–1979 seasons · QBs must have started a regular-season game*
@@ -58,7 +58,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2000–2026 seasons · Must have played in a regular-season game*
 2. **Name an NFC East QB**
    *2002–2026 seasons · QBs must have started a regular-season game*
-3. **Name a skill player who played for the Bills and the Dolphins**
+3. **Name a skill player (RB/WR/TE) who played for the Bills and the Dolphins**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 4. **Name a player who played for the Broncos and the Raiders**
    *All seasons (franchise history) · Must have played a regular-season game for both*
@@ -76,7 +76,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (Baltimore & Indianapolis) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name a player who played for the Cardinals and the Rams**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Steelers and the Browns**
+4. **Name a skill player (RB/WR/TE) who played for the Steelers and the Browns**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an AFC WR from the 1990s**
    *1990–1999 seasons · Must have been on an active regular-season roster*
@@ -108,7 +108,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2000–2026 seasons · Must have played in a regular-season game*
 3. **Name a player who played for the Seahawks and the 49ers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Chargers and the Chiefs**
+4. **Name a skill player (RB/WR/TE) who played for the Chargers and the Chiefs**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an AFC TE from the 1980s**
    *1980–1989 seasons · Must have been on an active regular-season roster*
@@ -124,7 +124,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · QBs must have started a regular-season game*
 3. **Name a player who played for the Broncos and the Chargers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Colts and the Titans**
+4. **Name a skill player (RB/WR/TE) who played for the Colts and the Titans**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. 🔥 **Name a QB from the 1980s**
    *1980–1989 seasons · QBs must have started a regular-season game*
@@ -138,7 +138,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · QBs must have started a regular-season game*
 2. **Name a Titans RB**
    *2000–2026 seasons · Must have played in a regular-season game*
-3. **Name a skill player who played for the Falcons and the Saints**
+3. **Name a skill player (RB/WR/TE) who played for the Falcons and the Saints**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 4. **Name a player who played for the Lions and the Vikings**
    *All seasons (franchise history) · Must have played a regular-season game for both*
@@ -172,7 +172,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name a player who played for the Falcons and the Panthers**
    *1995–2026 seasons · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Jaguars and the Texans**
+4. **Name a skill player (RB/WR/TE) who played for the Jaguars and the Texans**
    *2002–2026 seasons · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an NFC WR from the 1980s**
    *1980–1989 seasons · Must have been on an active regular-season roster*
@@ -186,9 +186,9 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2000–2026 seasons · Must have played in a regular-season game*
 2. **Name an AFC East QB**
    *2002–2026 seasons · QBs must have started a regular-season game*
-3. **Name a skill player who played for the Eagles and Washington**
+3. **Name a skill player (RB/WR/TE) who played for the Eagles and Washington**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
-4. **Name a skill player who played for the Bears and the Lions**
+4. **Name a skill player (RB/WR/TE) who played for the Bears and the Lions**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name a kicker from the 1990s**
    *1990–1999 seasons · Must have been on an active regular-season roster*
@@ -202,7 +202,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · QBs must have started a regular-season game*
 2. 🔥 **Name a Saints WR**
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
-3. **Name a skill player who played for the Patriots and the Jets**
+3. **Name a skill player (RB/WR/TE) who played for the Patriots and the Jets**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 4. **Name a player who played for the Saints and the Buccaneers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
@@ -220,7 +220,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · Must have played in a regular-season game*
 3. **Name a player who played for the Broncos and the Chiefs**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player who played for the Ravens and the Browns**
+4. **Name a skill player (RB/WR/TE) who played for the Ravens and the Browns**
    *1996–2026 seasons · Must have played a regular-season game for both (RB, WR or TE)*
 5. **Name an AFC QB from the 1980s**
    *1980–1989 seasons · QBs must have started a regular-season game*

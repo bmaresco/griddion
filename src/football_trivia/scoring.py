@@ -122,7 +122,7 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
     # §7 crowding: n = answers in this prompt with a higher R
     a = a.with_columns(n_higher=(pl.col("R").rank("min", descending=True) - 1).cast(pl.Int64))
     a = a.with_columns(R_prime=pl.col("R") * (1 + pl.col("n_higher")) ** (-DELTA))
-    a = a.with_columns(tier=_tier_expr())
+    a = a.with_columns(tier=_tier_expr(threshold_kind(p)))
     return a.sort("R_prime", descending=True), info
 
 
@@ -135,11 +135,16 @@ def load_thresholds() -> dict | None:
         return None
 
 
-def _tier_expr() -> pl.Expr:
+def threshold_kind(prompt: Prompt) -> str:
+    """§7: trait prompts (A = 1) sit on a different scale, so they get their own thresholds."""
+    return "trait" if prompt.is_trait else "other"
+
+
+def _tier_expr(kind: str) -> pl.Expr:
     t = load_thresholds()
-    if not t:
+    if not t or kind not in t.get("by_type", {}):
         return pl.lit(None, pl.Utf8)
-    c = t["thresholds"]  # lower bounds on R' for Starter, Backup, Hidden Gem
+    c = t["by_type"][kind]  # lower bounds on R' for Starter, Backup, Hidden Gem
     return (pl.when(pl.col("R_prime") >= c["Starter"]).then(pl.lit("Starter"))
             .when(pl.col("R_prime") >= c["Backup"]).then(pl.lit("Backup"))
             .when(pl.col("R_prime") >= c["Hidden Gem"]).then(pl.lit("Hidden Gem"))

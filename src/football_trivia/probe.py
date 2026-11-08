@@ -141,34 +141,39 @@ if __name__ == "__main__":
 
 
 def calibrate_file(con, path: str, freeze: bool) -> str:
-    """§7 threshold calibration: run every prompt, pool R', cut at 10/35/35/20."""
+    """§7 threshold calibration, per prompt type (trait vs other): pool R' with every prompt
+    weighted equally, cut at 10/35/35/20."""
     import datetime as dt
 
-    from .scoring import CALIBRATION_SHARES, THRESHOLDS_FILE, calibrate, fame
+    from .scoring import CALIBRATION_SHARES, THRESHOLDS_FILE, calibrate, fame, threshold_kind
     f = fame(con)
-    pooled, per = [], []
+    pooled: dict[str, list] = {"trait": [], "other": []}
+    per = []
     for line in open(path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         p = Prompt.from_json(line)
-        r = build_answers(con, p)
-        scored, info = score_answers(con, r, f)
+        scored, _ = score_answers(con, build_answers(con, p), f)
+        kind = threshold_kind(p)
         n = max(scored.height, 1)
-        pooled += [(x, 1.0 / n) for x in scored["R_prime"].to_list()]  # every prompt weighs the same (§7)
-        per.append((p.id or p.text, scored))
-    th = calibrate(pooled)
-    lines = [f"Pooled {len(pooled)} answers from {len(per)} prompts, each prompt weighted equally. Thresholds (lower bounds on R'):"]
-    lines += [f"  {t:<12} R' ≥ {v:.4f}" for t, v in th.items()] + ["  Sleeper Pick below that"]
-    tier = lambda x: next((t for t, v in th.items() if x >= v), "Sleeper Pick")
+        pooled[kind] += [(x, 1.0 / n) for x in scored["R_prime"].to_list()]  # every prompt weighs the same
+        per.append((p.id or p.text, kind, scored))
+    th = {k: calibrate(v) for k, v in pooled.items() if v}
+    lines = []
+    for k, v in th.items():
+        n_prompts = sum(1 for _, kind, _ in per if kind == k)
+        lines.append(f"[{k}] {len(pooled[k])} answers from {n_prompts} prompts (equal weight). Lower bounds on R':")
+        lines += [f"  {t:<12} R' ≥ {x:.4f}" for t, x in v.items()]
     lines.append("Per prompt (Starter · Backup · Hidden Gem · Sleeper Pick):")
-    for name, s in per:
+    for name, kind, sc in per:
         c = {t: 0 for t in TIERS}
-        for x in s["R_prime"].to_list():
-            c[tier(x)] += 1
-        lines.append(f"  {name:<12} " + " · ".join(str(c[t]) for t in TIERS) + f"   (n={s.height})")
+        for x in sc["R_prime"].to_list():
+            c[next((t for t, v in th[kind].items() if x >= v), "Sleeper Pick")] += 1
+        lines.append(f"  {name:<12} {kind:<6} " + " · ".join(str(c[t]) for t in TIERS) + f"   (n={sc.height})")
     if freeze:
-        THRESHOLDS_FILE.write_text(json.dumps({"thresholds": th, "shares": CALIBRATION_SHARES, "prompts_file": path,
-                                               "pooled_answers": len(pooled), "frozen_at": dt.date.today().isoformat()}, indent=2))
+        THRESHOLDS_FILE.write_text(json.dumps({"by_type": th, "shares": CALIBRATION_SHARES, "prompts_file": path,
+                                               "pooled_answers": {k: len(v) for k, v in pooled.items()},
+                                               "frozen_at": dt.date.today().isoformat()}, indent=2))
         lines.append(f"Frozen to {THRESHOLDS_FILE}")
     return "\n".join(lines)

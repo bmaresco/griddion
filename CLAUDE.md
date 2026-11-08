@@ -258,6 +258,8 @@ Set once, objectively:
 
 4. **Freeze** the resulting R′ values and record them here.
 
+**Decision: thresholds per prompt type — trait vs everything else.** Steps 1–4 run separately for the two groups (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values. Reason: `A = 1` for trait prompts puts them on a different scale. With one shared set, award and stat prompts filled most of the pooled top 10% and couldn't produce Hidden Gems or Sleepers (AP MVP came out 30 Starters · 21 Backups · 0 · 0), while team prompts got only 1–8 Starters each.
+
 Each prompt is then scored against the same frozen values, so hard prompts naturally get few Starters and easy prompts get many. There are no per-prompt quotas.
 
 **After launch:** rerun the pooled calibration with real answer data, and use real data to tune weights, δ, and thresholds.

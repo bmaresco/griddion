@@ -3,15 +3,16 @@ ARI,1900,2100,ARI,
 ARZ,1900,2100,ARI,nflverse rosters 2002-2015
 PHO,1900,2100,ARI,Phoenix Cardinals 1988-93
 CHC,1900,2100,ARI,Chicago Cardinals
-STL,1900,1987,ARI,St. Louis Cardinals
+STL,1960,1987,ARI,St. Louis Cardinals (1923 All-Stars and 1934 Gunners were defunct teams)
 STL,1995,2015,LA,St. Louis Rams (schedules use STL through 2015)
 SL,1900,2100,LA,St. Louis Rams (rosters 2002-2015)
 RAM,1900,2100,LA,
-LA,1900,2100,LA,
+LA,1946,2100,LA,(1926 Los Angeles Buccaneers were a defunct team)
 BAL,1953,1983,IND,Baltimore Colts
 BAL,1996,2100,BAL,
 BLT,1900,2100,BAL,nflverse rosters 2002-2015
-CLE,1900,2100,CLE,
+CLE,1937,1945,LA,Cleveland Rams (pre-1937 CLE codes were defunct Cleveland teams)
+CLE,1946,2100,CLE,Browns (1946-49 AAFC excluded via team_alignment)
 CLV,1900,2100,CLE,nflverse rosters 2002-2015
 HOU,1960,1996,TEN,Houston Oilers
 HOU,2002,2100,HOU,
@@ -27,30 +28,34 @@ NE,1900,2100,NE,
 NYT,1900,2100,NYJ,New York Titans
 NYJ,1900,2100,NYJ,
 TEX,1900,2100,KC,Dallas Texans (AFL)
-KC,1900,2100,KC,
+KC,1960,2100,KC,(1924-26 Kansas City Blues/Cowboys were a defunct team)
 COW,1900,2100,DAL,
 DAL,1960,2100,DAL,
 CHB,1900,2100,CHI,
 CHI,1900,2100,CHI,
-NY,1900,2100,NYG,
+DEC,1900,2100,CHI,Decatur Staleys 1920
+CHS,1900,2100,CHI,Chicago Staleys 1921
+NY,1925,2100,NYG,(1921 New York Brickley Giants were a defunct team)
 NYG,1900,2100,NYG,
 IND,1900,2100,IND,
 ATL,1900,2100,ATL,
 BUF,1946,1949,,AAFC Bills (defunct)
 BUF,1960,2100,BUF,
 CAR,1900,2100,CAR,
-CIN,1900,2100,CIN,
+CIN,1968,2100,CIN,(1921 Celts and 1933-34 Reds were defunct teams)
 DEN,1900,2100,DEN,
-DET,1900,2100,DET,
+DET,1934,2100,DET,(pre-1934 DET codes were defunct Detroit teams)
+POR,1900,2100,DET,Portsmouth Spartans 1930-33
 GB,1900,2100,GB,
 JAX,1900,2100,JAX,
 MIA,1946,1946,,AAFC Seahawks (defunct)
 MIA,1966,2100,MIA,
-MIN,1900,2100,MIN,
+MIN,1961,2100,MIN,(1921-30 Minneapolis Marines/Red Jackets were a defunct team)
 NO,1900,2100,NO,
 PHI,1900,2100,PHI,
 PIT,1900,2100,PIT,
 SEA,1900,2100,SEA,
 SF,1900,2100,SF,
 TB,1900,2100,TB,
-WAS,1900,2100,WAS,
+WAS,1937,2100,WAS,(1921 Washington Senators were a defunct team)
+BOS,1932,1936,WAS,Boston Braves/Redskins
