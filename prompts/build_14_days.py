@@ -3,6 +3,7 @@
 Kept as code so the translation is reviewable: one tuple per prompt, in day/slot order.
 Revisions approved after the first probe: two-team prompts are "skill player" (RB/WR/TE) where
 that reaches 25 answers, otherwise any position; TE stat 1,000 -> 800 yds; QB rushing 500 -> 400 yds.
+Launch-day changes (Drive #1): P4 Jets+Patriots any position; P6 WR 1,200+ receiving yds.
 Duplicates replaced: 13.3 Patriots+Jets -> Bills+Patriots, 10.3 Rams+Cardinals -> Seahawks+Rams (any position; skill version had 21).
 """
 import json
@@ -47,9 +48,9 @@ DAYS = [
  [("Name a Browns QB", team("CLE", "QB", sub=f"{ALL} · {QB}")),
   ("Name an NFC North WR", div("NFC North", "WR")),
   ("Name a player who played for the Raiders and the Chiefs", two("LV", "KC", None)),
-  ("Name a skill player (RB/WR/TE) who played for the Jets and the Patriots", two("NYJ", "NE", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Jets and the Patriots", two("NYJ", "NE", None)),
   ("Name an AFC QB from the 1990s", era(1990, 1999, "QB", "AFC")),
-  ("Name a WR with a 1,500+ receiving yard season", stat("receiving_yards", 1500, "WR")),
+  ("Name a WR with a 1,200+ receiving yard season", stat("receiving_yards", 1200, "WR")),
   ("Name an AP MVP", award("mvp", 1957))],
  [("Name a Cowboys RB", team("DAL", "RB", 2000, f"2000–2026 seasons · {G}")),
   ("Name a Packers WR", team("GB", "WR", sub=f"{ALL} · {G99}")),

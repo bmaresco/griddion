@@ -12,11 +12,11 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · Must have played in a regular-season game*
 3. **Name a player who played for the Raiders and the Chiefs**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player (RB/WR/TE) who played for the Jets and the Patriots**
-   *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
+4. **Name a player who played for the Jets and the Patriots**
+   *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an AFC QB from the 1990s**
    *1990–1999 seasons · QBs must have started a regular-season game*
-6. **Name a WR with a 1,500+ receiving yard season**
+6. **Name a WR with a 1,200+ receiving yard season**
    *Single season, 1999–2026 regular season*
 7. **Name an AP MVP**
    *1957–2025 seasons*

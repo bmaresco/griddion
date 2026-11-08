@@ -1,6 +1,7 @@
 """Build step 7: prompt scheduling + publish flow (spec §6 export format, §9 Drive #).
 
-    uv run publish build                 # all scheduled drives -> public/ (hard stop if any prompt < 25)
+    uv run publish build                 # all scheduled drives -> public/ (hard stop if any prompt
+                                         # has < 25 answers or < 3 Sleeper Picks besides the YKB Kid)
     uv run publish build --drive 3       # one drive
     uv run publish diff                  # weekly refresh diff report vs the last published public/
     uv run publish schedule --launch 2026-11-09   # (re)write the schedule from the prompt queue
@@ -30,6 +31,7 @@ ROLLOVER = {"time": "00:00", "timezone": "America/New_York"}  # §9: new drive a
 SCHEDULE = ROOT / "prompts" / "schedule.json"
 QUEUE = ROOT / "prompts" / "prompts_14_days.jsonl"
 REPORTS = ROOT / "reports"
+MIN_SLEEPERS = 3  # §6: a prompt ships only with at least 3 Sleeper Picks besides the YKB Kid
 
 # §2 points, §9 yards (= points / 5) and share squares
 TIER_INFO = {
@@ -178,6 +180,9 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, 
         warnings.append(f"ykb_kid override {p.ykb_kid} is not a valid answer")
     if not ykb:
         warnings.append("no YKB Kid (no Sleeper Pick or Hidden Gem)")
+    n_sleepers = int((scored["tier"] == "Sleeper Pick").sum())  # YKB Kid already re-tiered
+    if n_sleepers < MIN_SLEEPERS:
+        warnings.append(f"HARD STOP: {n_sleepers} Sleeper Picks besides the YKB Kid (< {MIN_SLEEPERS})")
     ctx = context_lines(con, p, scored)
     aliases = bank_aliases(con, scored["player_id"].to_list())
     answers = []

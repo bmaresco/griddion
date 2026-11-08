@@ -210,11 +210,12 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
 
 ### Scheduling and publish flow
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
-- **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
+- **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers or with fewer than 3 Sleeper Picks besides the YKB Kid (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
 - **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
+- **< 3 Sleeper Picks besides the YKB Kid → hard stop** (decided 2026-11-08). Every shipped prompt must leave room for real deep pulls. `publish build` refuses the drive; replacements are chosen by a human, not the pipeline.
 - **Per-day check: average valid answers across a day's 7 prompts > 300 → warning only.** Keeps a day reviewable and aliasable without capping any single prompt. (Replaces the earlier per-prompt 300 warning.)
 - **Diff report** against the last build (new or removed answers, tier changes). It also **flags every prompt within 3 of the minimum (≤ 28 valid answers)**, since one roster or award change can push it under. Batch `/probe` marks these `tight`.
 - **Tier spread warnings**: zero Starters; zero Sleepers; **very top-heavy** = Starter + Backup above 70% of answers; **very bottom-heavy** = Hidden Gem + Sleeper above 85%. (Calibration targets 45/55, so these flag clear outliers.) Warnings only. The spread is never forced.
@@ -380,6 +381,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **No nickname list in v1** ("Megatron", "T.O." don't match).
 - A real player who isn't valid for the prompt is rejected, including when a typo is at least as close to him as to any valid answer.
 - **Ambiguous last name within a prompt:** the UI asks for a first name ("Which Smith?") instead of guessing. The same applies when a typo ties between two valid answers.
+- **Identical full names within a prompt** (e.g. two Steve Smiths on "WR 1,200+ receiving yards": Panthers 1,563 yds · 2005 and Giants 1,220 yds · 2009): asking for a first name can't separate them, so the UI lists the tied answers with their **context lines** and the player taps one.
 - Measured on the 14-day draft (one random typo per answer, 9,291 answers): 98.6% matched the right player, 0 the wrong one, 0.2% ambiguous, 1.3% rejected.
 
 **All Answers screen**
