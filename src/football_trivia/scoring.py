@@ -30,6 +30,8 @@ DELTA = 0.15
 PEAK_BENCHMARK = {"QB": ("passing_yards", 4000), "RB": ("scrimmage_yards", 1200),
                   "WR": ("scrimmage_yards", 1200), "TE": ("scrimmage_yards", 1200)}
 PRE_1950 = 1950  # QBs with a career season before this use seasons share (the §7 one-unit exception)
+# prominence = min(1, stint / benchmark) in the prompt's unit: how long he was the guy there (§7)
+PROMINENCE_BENCHMARK = {"starts": 32, "games": 32, "seasons": 2}
 
 THRESHOLDS_FILE = DATA_DIR / "tier_thresholds.json"
 TIERS = ["Starter", "Backup", "Hidden Gem", "Sleeper Pick"]
@@ -96,7 +98,8 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
 
     if p.is_trait:
         info["unit"] = "trait"
-        a = a.with_columns(share=pl.lit(None, pl.Float64), peak=pl.lit(None, pl.Float64), A=pl.lit(1.0))
+        a = a.with_columns(share=pl.lit(None, pl.Float64), prominence=pl.lit(None, pl.Float64),
+                           tenure=pl.lit(None, pl.Float64), peak=pl.lit(None, pl.Float64), A=pl.lit(1.0))
     else:
         pos = p.filters.get("position")
         is_qb = pos is not None and [x.upper() for x in _as_list(pos)] == ["QB"]
@@ -113,17 +116,29 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
             a = a.with_columns(unit=pl.lit("seasons"))
             info["unit"] = "seasons"
 
-        def share(num: str, den: str) -> pl.Expr:
-            if "per_team" in a.columns:  # two-team: A = max over the teams
-                return pl.col("per_team").list.eval(pl.element().struct.field(num)).list.max() / pl.col(den)
-            return pl.col(num) / pl.col(den)
-
-        a = a.with_columns(share=pl.when(pl.col("unit") == "starts")
-                           .then(share("ctx_qb_starts", "career_qb_starts"))
-                           .otherwise(share("ctx_seasons", "career_seasons")))
-        a = a.with_columns(pl.col("share").fill_nan(None).clip(0, 1))
+        if "per_team" in a.columns:
+            # explode the per-team stints, score each team, keep the best
+            t = a.select("player_id", "unit", "career_qb_starts", "career_seasons", "per_team").explode("per_team").unnest("per_team")
+            t = t.with_columns(
+                stint=pl.when(pl.col("unit") == "starts").then(pl.col("ctx_qb_starts")).otherwise(pl.col("ctx_seasons")),
+                career=pl.when(pl.col("unit") == "starts").then(pl.col("career_qb_starts")).otherwise(pl.col("career_seasons")),
+                bench=pl.when(pl.col("unit") == "starts").then(PROMINENCE_BENCHMARK["starts"]).otherwise(PROMINENCE_BENCHMARK["seasons"]),
+            ).with_columns(
+                share_t=(pl.col("stint") / pl.col("career")).fill_nan(None).clip(0, 1),
+                prom_t=(pl.col("stint") / pl.col("bench")).clip(0, 1),
+            ).with_columns(ten=(pl.col("share_t") * pl.col("prom_t")).sqrt())
+            best = t.sort("ten", descending=True).group_by("player_id").first().select(
+                "player_id", pl.col("share_t").alias("share"), pl.col("prom_t").alias("prominence"), pl.col("ten").alias("tenure"))
+            a = a.join(best, on="player_id", how="left")
+        else:
+            stint = pl.when(pl.col("unit") == "starts").then(pl.col("ctx_qb_starts")).otherwise(pl.col("ctx_seasons"))
+            career = pl.when(pl.col("unit") == "starts").then(pl.col("career_qb_starts")).otherwise(pl.col("career_seasons"))
+            bench = pl.when(pl.col("unit") == "starts").then(PROMINENCE_BENCHMARK["starts"]).otherwise(PROMINENCE_BENCHMARK["seasons"])
+            a = a.with_columns(share=(stint / career).fill_nan(None).clip(0, 1), prominence=(stint / bench).clip(0, 1))
+            a = a.with_columns(tenure=(pl.col("share") * pl.col("prominence")).sqrt())
         a = a.join(_peak(con, p, a), on="player_id", how="left")
-        a = a.with_columns(A=pl.max_horizontal(pl.col("share").fill_null(0).sqrt(), pl.col("peak").fill_null(0)))
+        # §7: A = max(sqrt(share x prominence), peak)
+        a = a.with_columns(A=pl.max_horizontal(pl.col("tenure").fill_null(0), pl.col("peak").fill_null(0)))
 
     a = a.with_columns(R=pl.col("F") * pl.col("A"))
     # §7 crowding: n = answers in this prompt with a higher R

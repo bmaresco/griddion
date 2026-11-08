@@ -70,7 +70,7 @@ def report(r: Result, show_all: bool = False, scored: pl.DataFrame | None = None
     if show_all and r.n:
         src = scored if scored is not None else a
         cols = ["display_name", "first_season", "last_season", "ctx_seasons", "ctx_qb_starts", "career_seasons",
-                "career_qb_starts", "F", "share", "peak", "A", "R_prime", "tier", "bases"]
+                "career_qb_starts", "F", "share", "prominence", "peak", "A", "R_prime", "tier", "bases"]
         with pl.Config(tbl_rows=-1, tbl_width_chars=220, fmt_str_lengths=40, float_precision=3):
             out.append(str(src.select([c for c in cols if c in src.columns])))
     return "\n".join(out)

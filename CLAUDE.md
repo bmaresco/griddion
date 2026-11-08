@@ -206,13 +206,16 @@ s_career = clamp( seasons / 15, 0, 1 )
 
 ### Association, A (per player, per prompt)
 ```
-share   = context_units / career_units        (unit per the rules below)
-peak    = best qualifying-season production / career-best season production
-A       = max( sqrt(share), peak )               for team / era prompts
-A       = max( A_team1, A_team2 )                for two-team prompts
-A       = 1                                       for trait prompts
+share      = context_units / career_units        (unit per the rules below)
+prominence = min(1, context_units / benchmark)   benchmark: 32 starts, 32 games, or 2 seasons
+peak       = min(1, best qualifying-season production / benchmark)
+A          = max( sqrt(share × prominence), peak )   for team / era prompts
+A          = max( A_team1, A_team2 )             for two-team prompts
+A          = 1                                    for trait prompts
 ```
 - `sqrt` softens the drop-off: half a career ≈ 0.71.
+- **`prominence`** (team, era and two-team prompts; not trait): **fans tie a player to a team by how long he was the guy there, not by what fraction of a short career the stint was.** Without it, a career backup's 3 starts out of 5 scored like a long tenure (Chase Daniel, Matt Barkley and Tyson Bagent ranked above Rex Grossman on "Bears QB"). Benchmarks match the prompt's unit: **32 starts** or **32 games** (two full seasons of starting or playing) or **2 seasons** (a real tenure). With it, Grossman (31 starts) is a Starter and Daniel (3 starts) a Hidden Gem.
+- Two-team prompts compute `sqrt(share × prominence)` per team and keep the better team.
 - `peak` keeps a memorable short stint (one great season with a team) from being treated like a cameo.
 - **`peak = min(1, best qualifying-season production ÷ benchmark)`**, for **QB, RB, WR, TE** only. A season's listed position picks the metric. All other positions use **`A = sqrt(share)`** only. Season stats start in 1999, so qualifying seasons before 1999 contribute no peak.
 
