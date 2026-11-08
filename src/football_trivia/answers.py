@@ -120,6 +120,13 @@ def build_answers(con, prompt: Prompt) -> Result:
         raise ValueError(f"unknown filters: {sorted(unknown)}")
     warnings: list[str] = []
 
+    if "stat_threshold" in f:
+        # §5: stat prompts are 1999+ and must say so, so right pre-1999 answers aren't marked wrong
+        if int(f.get("season_min", 0)) < STATS_FIRST_SEASON:
+            f = {**f, "season_min": STATS_FIRST_SEASON}
+            warnings.append(f"stat prompt: season_min set to {STATS_FIRST_SEASON} (season stats start then)")
+        if "1999" not in (prompt.text or "") and int(f["season_min"]) == STATS_FIRST_SEASON:
+            warnings.append('stat prompt text must state the date, e.g. "... in a season (since 1999)"')
     trait_ids = _trait_players(con, f, warnings) if ("award" in f or "stat_threshold" in f) else None
     if prompt.is_trait:
         answers = _trait_answers(con, trait_ids, f)
@@ -235,8 +242,6 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
         stat = STATS.get(st["stat"])
         if stat is None:
             raise ValueError(f"unknown stat {st['stat']!r}; known: {sorted(STATS)}")
-        if smin < STATS_FIRST_SEASON:
-            warnings.append(f"season stats start in {STATS_FIRST_SEASON}; earlier seasons can't qualify yet")
         ids = {r[0] for r in con.execute(f"""
             SELECT player_id FROM raw_player_week
             WHERE season_type = 'REG' AND season BETWEEN ? AND ?

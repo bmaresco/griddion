@@ -122,6 +122,8 @@ Supported filter types (build as a reusable library):
 Filter rules:
 - **Team** means franchise (`data/team_franchises.csv`), so "Colts" includes Baltimore. **AFL seasons (1960–69) count** for team prompts.
 - **Conference** prompts (AFC/NFC) start in **1970**. Division prompts use the division in force that season (`data/team_alignment.csv`).
+- **Stat thresholds: 1999+ only (launch).** Season stats come from nflverse, which starts in 1999. The prompt text **must state the date** ("…in a season (since 1999)") so a correct pre-1999 answer is never marked wrong. `build_answers` clamps `season_min` to 1999 and `/probe` warns if the text doesn't say "1999".
+- **AAFC seasons (1946–49) are excluded** from team prompts. Players still qualify through their NFL seasons (e.g. Otto Graham, Browns 1950–55).
 - **Awards: AP only.** Wikipedia variants from other bodies (PFWA, UPI, Sporting News, NEA, …) are ignored. MVP prompts start in **1957**, OROY/DROY in **1967** (the first AP seasons).
 
 ---
@@ -277,6 +279,6 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 ## 11. Open items
 
 - Honors weights within F
-- AAFC seasons (Browns and 49ers 1946–49): count for team prompts or not? (Currently not; the AFL rule doesn't cover them)
+- Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - Game title

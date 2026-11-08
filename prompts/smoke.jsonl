@@ -3,10 +3,9 @@
 {"id":"seahawks-wr","text":"Name a Seahawks WR","type":"team","filters":{"team":"SEA","position":"WR"}}
 {"id":"jets-and-vikings","text":"Name a player who played for the Jets and the Vikings","type":"two_team","filters":{"teams_all":["NYJ","MIN"]}}
 {"id":"mvp","text":"Name an AP MVP","type":"trait","filters":{"award":"mvp"}}
-{"id":"oroy-and-mvp","text":"Won OROY and MVP","type":"trait","filters":{"award":["oroy","mvp"]}}
-{"id":"1500-rec","text":"1,500+ receiving yard season","type":"trait","filters":{"stat_threshold":{"stat":"receiving_yards","min":1500}}}
-{"id":"afl-chiefs-qb","text":"Name an AFL-era Chiefs/Texans QB","type":"team","filters":{"team":"KC","position":"QB","season_max":1969}}
+{"id":"1500-rec","text":"Name a player with a 1,500+ receiving yard season (since 1999)","type":"trait","filters":{"stat_threshold":{"stat":"receiving_yards","min":1500},"season_min":1999}}
+{"id":"chiefs-qb","text":"Name a Chiefs QB (all seasons)","type":"team","filters":{"team":"KC","position":"QB"}}
 {"id":"nfc-central-rb-80s","text":"Name an 80s NFC Central RB","type":"era","filters":{"division":"NFC Central","position":"RB","season_min":1980,"season_max":1989}}
 {"id":"packers-k","text":"Name a Packers kicker","type":"team","filters":{"team":"GB","position":"K"}}
-{"id":"colts-qb-baltimore","text":"Name a Baltimore Colts QB","type":"team","filters":{"team":"IND","position":"QB","season_max":1983}}
-{"id":"cb-dpoy","text":"Name a DPOY","type":"trait","filters":{"award":"dpoy"}}
+{"id":"colts-qb","text":"Name a Colts QB (any era)","type":"team","filters":{"team":"IND","position":"QB"}}
+{"id":"dpoy","text":"Name a DPOY","type":"trait","filters":{"award":"dpoy"}}
