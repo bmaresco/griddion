@@ -241,15 +241,29 @@ def _honors(con, log) -> None:
     WITH pv AS (
         SELECT title, sum(views) AS pageviews, min(month) AS pv_first_month, count(*) AS pv_months
         FROM raw_pageviews GROUP BY title
+    ),
+    win AS (SELECT max(month) - INTERVAL 23 MONTH AS start FROM raw_pageviews),
+    pv24 AS (
+        SELECT title, sum(views) / 24.0 AS pv24, sum(moved) AS pv24_from_former_titles
+        FROM (
+            -- current title: only months since the article moved onto it (else it was another page)
+            SELECT v.title, v.views, 0 AS moved FROM raw_pageviews v, win
+            LEFT JOIN raw_title_segments c ON c.title = v.title AND c.segment_title = v.title AND c.left_at IS NULL
+            WHERE v.month >= win.start AND (c.arrived_at IS NULL OR v.month >= date_trunc('month', c.arrived_at))
+            UNION ALL
+            SELECT title, views, views FROM raw_pageviews_moved, win WHERE month >= win.start
+        ) GROUP BY title
     )
     SELECT p.player_id, p.wiki_title,
            coalesce(h.pro_bowls, 0) AS pro_bowls, coalesce(h.all_pro_1st, 0) AS all_pro_1st,
            coalesce(h.all_pro_2nd, 0) AS all_pro_2nd, coalesce(h.afl_all_star, 0) AS afl_all_star,
            coalesce(h.hof, false) AS hof, coalesce(h.has_highlights, false) AS has_highlights,
-           coalesce(pv.pageviews, 0) AS pageviews, pv.pv_first_month, pv.pv_months
+           coalesce(pv.pageviews, 0) AS pageviews, pv.pv_first_month, pv.pv_months,
+           coalesce(pv24.pv24, 0) AS pv24, coalesce(pv24.pv24_from_former_titles, 0) AS pv24_from_former_titles
     FROM players p
     LEFT JOIN _honors h USING (player_id)
     LEFT JOIN pv ON pv.title = p.wiki_title
+    LEFT JOIN pv24 ON pv24.title = p.wiki_title
     """)
     # sanity: each major award should have ~1 winner per season
     bad = con.execute("""

@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 import polars as pl
 
-from ..db import run
+from ..db import run, write_table
 from ..http import get
 
 API = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user"
@@ -33,7 +33,8 @@ def _next_month(d: dt.date) -> dt.date:
 
 def _fetch(title: str, start: dt.date, end: dt.date) -> list[tuple[str, dt.date, int]] | None:
     """Rows for one article; [] if it has no data; None if the request failed."""
-    url = f"{API}/{quote(title.replace(' ', '_'), safe='')}/monthly/{start:%Y%m%d}00/{end:%Y%m%d}00"
+    end_day = _next_month(end) - dt.timedelta(days=1)  # last day: a 1-month range needs a full month
+    url = f"{API}/{quote(title.replace(' ', '_'), safe='')}/monthly/{start:%Y%m%d}00/{end_day:%Y%m%d}00"
     try:
         r = get(url, ok404=True)
     except Exception:
@@ -83,3 +84,86 @@ def refresh(con, titles: list[str], log=print, workers: int = 4) -> None:
                 done,
             )
         log(f"  {min(i + FLUSH, len(jobs))}/{len(jobs)} ({failed} failed, will retry next run)")
+
+
+# ------------------------------------------------------------------ page moves
+# The API counts views by exact title, so a rename splits an article's history.
+# Only the pv24 window matters for fame (spec §7), so we only look at moves in it.
+
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+WINDOW_MONTHS = 24
+
+
+def window_start(end: dt.date | None = None) -> dt.date:
+    end = end or _last_full_month()
+    y, m = divmod(end.year * 12 + end.month - 1 - (WINDOW_MONTHS - 1), 12)
+    return dt.date(y, m + 1, 1)
+
+
+def refresh_moves(con, titles: list[str], log=print) -> None:
+    """Article moves (namespace 0) since the window start that end at one of `titles`."""
+    start = window_start()
+    log(f"pageviews: reading the Wikipedia move log back to {start:%Y-%m}")
+    moves: list[tuple[str, str, dt.datetime]] = []
+    params = {"action": "query", "list": "logevents", "letype": "move", "lenamespace": "0", "lelimit": "500",
+              "leprop": "title|details|timestamp", "leend": f"{start:%Y-%m-%d}T00:00:00Z",
+              "format": "json", "formatversion": "2"}
+    pages = 0
+    while True:
+        j = get(WIKI_API, params=params).json()
+        for e in j.get("query", {}).get("logevents", []):
+            tgt = e.get("params", {})
+            if tgt.get("target_ns") == 0:
+                # naive UTC: avoids DuckDB needing pytz for tz-aware values
+                moves.append((e["title"], tgt["target_title"], dt.datetime.fromisoformat(e["timestamp"].rstrip("Z"))))
+        pages += 1
+        if pages % 200 == 0:
+            log(f"  {pages} pages, {len(moves)} moves")
+        if "continue" not in j:
+            break
+        params.update(j["continue"])
+
+    # walk each article's history backwards; every title it held is valid from the
+    # move that created it ("arrived") until the move that left it ("left")
+    by_target: dict[str, list[tuple[str, dt.datetime]]] = {}
+    for old, new, ts in moves:
+        by_target.setdefault(new, []).append((old, ts))
+    rows = []
+    for t in titles:
+        frontier = [(t, None)]  # (title, left_at); None = still current
+        seen = {t}
+        while frontier:
+            cur, left = frontier.pop()
+            into = [(old, ts) for old, ts in by_target.get(cur, []) if left is None or ts < left]
+            arrived = max((ts for _, ts in into), default=None)
+            if left is not None or arrived is not None:
+                rows.append({"title": t, "segment_title": cur, "arrived_at": arrived, "left_at": left})
+            for old, ts in into:
+                if old not in seen:
+                    seen.add(old)
+                    frontier.append((old, ts))
+    df = pl.DataFrame(rows, schema={"title": pl.Utf8, "segment_title": pl.Utf8,
+                                    "arrived_at": pl.Datetime, "left_at": pl.Datetime})
+    write_table(con, "raw_title_segments", df)
+    log(f"  {len(moves)} moves in window; {df.filter(pl.col('left_at').is_not_null()).height} former titles "
+        f"across {df['title'].n_unique()} player articles")
+
+
+def refresh_moved_views(con, log=print, workers: int = 4) -> None:
+    """Pageviews for each former title, for the window months while the article held it."""
+    end = _last_full_month()
+    start = window_start(end)
+    jobs = []
+    for title, seg, arrived, left in con.execute(
+            "SELECT title, segment_title, arrived_at, left_at FROM raw_title_segments WHERE left_at IS NOT NULL").fetchall():
+        first = max(start, arrived.date().replace(day=1)) if arrived else start
+        last = min(end, left.date().replace(day=1))  # move month: views split between titles
+        if first <= last:
+            jobs.append((title, seg, first, last))
+    log(f"pageviews: {len(jobs)} former titles to fetch")
+    with ThreadPoolExecutor(workers) as ex:
+        res = list(ex.map(lambda j: _fetch(j[1], j[2], j[3]), jobs))
+    rows = [(t, seg, month, views) for (t, seg, _, _), r in zip(jobs, res) if r for (_, month, views) in r]
+    df = pl.DataFrame(rows, schema={"title": pl.Utf8, "old_title": pl.Utf8, "month": pl.Date, "views": pl.Int64}, orient="row")
+    write_table(con, "raw_pageviews_moved", df)
+    log(f"  +{df.height} monthly rows from former titles ({sum(r is None for r in res)} failed; rerun to retry)")

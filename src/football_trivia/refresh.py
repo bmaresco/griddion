@@ -44,11 +44,15 @@ def main(argv: list[str] | None = None) -> None:
             wikipedia.refresh(con, titles, log)
         if "pageviews" in steps:
             pageviews.refresh(con, titles, log)
+            pageviews.refresh_moves(con, titles, log)
+            pageviews.refresh_moved_views(con, log)
     if "build" in steps:
         for t, step in (("raw_wiki_pages", "wikipedia"), ("raw_qb_list_pages", "qb_lists")):
             if not table_exists(con, t):
                 raise SystemExit(f"build needs {t}; run `refresh --only {step}` first")
         pageviews._ensure_tables(con)
+        run(con, "CREATE TABLE IF NOT EXISTS raw_pageviews_moved (title VARCHAR, old_title VARCHAR, month DATE, views BIGINT)")
+        run(con, "CREATE TABLE IF NOT EXISTS raw_title_segments (title VARCHAR, segment_title VARCHAR, arrived_at TIMESTAMP, left_at TIMESTAMP)")
         n_pv = con.execute("SELECT count(*) FROM raw_pageviews_fetched").fetchall()[0][0]
         if n_pv == 0:
             log("warning: no pageviews cached yet; fame inputs will be 0 until `refresh --only pageviews` runs")
