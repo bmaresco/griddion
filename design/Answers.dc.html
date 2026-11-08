@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Griddion all answers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&amp;family=Silkscreen:wght@400;700&amp;family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#c8352f}a:hover{color:#8e2330}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 12px 12px 16px; background: #160f33; color: #1d1a14; font-family: 'Courier Prime', monospace; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+
+<div style="flex: none; background: #2b2b33; border: 3px solid #0a0a10; padding: 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="height: 26px; background: #c8352f; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; color: #f3ead7">
+<span style="font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px; letter-spacing: 2px">GRIDDION</span>
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px">STREAK 5 · 4W 1L</span>
+</div>
+<div style="box-sizing: border-box; background-color: #050505; background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.3px); background-size: 3px 3px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-family: 'DotGothic16', monospace">
+<span style="font-size: 16px; line-height: 1; color: #c98a2e">ALL ANSWERS · DRIVE #12</span>
+<h1 style="margin: 0; font-weight: 400; font-size: 32px; line-height: 1; color: #ffb43a">NAME A BEARS QB</h1>
+<span style="font-size: 16px; line-height: 1; color: #c98a2e">31 ANSWERS · 1,004 PLAYERS</span>
+</div>
+</div>
+
+<nav aria-label="Prompts" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="7">
+<button type="button" aria-pressed="{{t.on}}" style="{{t.style}}">
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; line-height: 1">{{t.label}}</span>
+<span style="{{t.bar}}"></span>
+</button>
+</sc-for>
+</nav>
+
+<div style="display: flex; gap: 8px; align-items: stretch">
+<label for="find" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search answers</label>
+<input id="find" type="search" autocomplete="off" placeholder="search players…" value="{{q}}" onChange="{{onSearch}}" style="flex: 1 1 auto; min-width: 0; height: 44px; box-sizing: border-box; padding: 0 10px; background: #efe6cf; border: 3px solid #0a0a10; color: #1d1a14; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 17px; outline: none">
+<div role="group" aria-label="Sort" style="display: flex; border: 3px solid #0a0a10">
+<button type="button" onClick="{{byTier}}" aria-pressed="{{isTier}}" style="{{tierBtn}}">TIER</button>
+<button type="button" onClick="{{byName}}" aria-pressed="{{isAZ}}" style="{{azBtn}}">A–Z</button>
+</div>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; display: flex; background: #1d1d22; border: 3px solid #0a0a10; padding: 6px">
+<div style="flex: 1 1 auto; min-height: 0; display: flex; border: 2px dashed #55555f; padding: 6px">
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #efe6cf">
+
+<div style="display: flex; flex-direction: column; border-bottom: 3px solid #1d1a14">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #ffe27a; border-bottom: 1px solid #b9ad8c">
+<span style="flex: none; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 11px; color: #f3ead7; background: #1d1a14; padding: 3px 5px">YOUR PICK</span>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">Craig Krenzel</span>
+<span style="font-size: 13px; color: #6b6253">5 starts · 2004</span>
+</div>
+<span style="flex: none; font-weight: 700; font-size: 11px; color: #f3ead7; background: #7b3fc4; padding: 3px 5px; border: 2px solid #1d1a14">SLEEPER +85</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff3c4">
+<span style="flex: none; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 11px; color: #1d1a14; background: #e0a800; padding: 3px 5px; border: 2px solid #1d1a14">YKB KID</span>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">Henry Burris</span>
+<span style="font-size: 13px; color: #6b6253">1 start · 2002</span>
+</div>
+<span style="flex: none; font-weight: 700; font-size: 13px; color: #6b6253">+100</span>
+</div>
+</div>
+
+<sc-if value="{{isTier}}" hint-placeholder-val="{{true}}">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div style="{{g.style}}">
+<span>{{g.title}}</span>
+<span>{{g.meta}}</span>
+</div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="6">
+<div style="{{r.style}}">
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">{{r.name}}</span>
+<span style="font-size: 13px; color: #6b6253">{{r.ctx}}</span>
+</div>
+<div style="flex: none; display: flex; flex-direction: column; align-items: flex-end">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">{{r.pct}}</span>
+<span style="font-size: 12px; color: #6b6253">{{r.picks}}</span>
+</div>
+</div>
+</sc-for>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{isAZ}}" hint-placeholder-val="{{false}}">
+<sc-for list="{{az}}" as="r" hint-placeholder-count="10">
+<div style="{{r.style}}">
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">{{r.name}}</span>
+<span style="font-size: 13px; color: #6b6253">{{r.ctx}}</span>
+</div>
+<span style="{{r.chip}}">{{r.tierName}}</span>
+<div style="flex: none; width: 72px; display: flex; flex-direction: column; align-items: flex-end">
+<span style="font-weight: 700; font-size: 17px; line-height: 1.15">{{r.pct}}</span>
+<span style="font-size: 12px; color: #6b6253">{{r.n}}</span>
+</div>
+</div>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; padding: 20px 14px; font-size: 16px; color: #6b6253">No valid answer matches “{{q}}”.</p>
+</sc-if>
+
+</div>
+</div>
+</div>
+
+<a href="Recap.dc.html" style="flex: none; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-decoration: none; background: #c8352f; color: #f3ead7; border: 3px solid #0a0a10; box-shadow: 3px 3px 0 0 #000; font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px">BACK TO RECAP</a>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  tiers() {
+    return {
+      starter: { name: 'STARTER', pts: 10, c: '#7a8191', ink: '#f3ead7' },
+      backup: { name: 'BACKUP', pts: 30, c: '#1f6fd1', ink: '#f3ead7' },
+      gem: { name: 'HIDDEN GEM', pts: 60, c: '#198a4a', ink: '#f3ead7' },
+      sleeper: { name: 'SLEEPER PICK', pts: 85, c: '#7b3fc4', ink: '#f3ead7' },
+      ykb: { name: 'YKB KID', pts: 100, c: '#e0a800', ink: '#1d1a14' }
+    };
+  }
+  answers() {
+    return [
+      ['Jay Cutler', 'starter', '102 starts · 2009–16', 291],
+      ['Caleb Williams', 'starter', '39 starts · 2024–26', 236],
+      ['Justin Fields', 'starter', '38 starts · 2021–23', 158],
+      ['Mitchell Trubisky', 'starter', '50 starts · 2017–20', 102],
+      ['Rex Grossman', 'backup', '31 starts · 2003–08', 41],
+      ['Kyle Orton', 'backup', '33 starts · 2005–08', 33],
+      ['Nick Foles', 'backup', '8 starts · 2020–21', 24],
+      ['Andy Dalton', 'backup', '6 starts · 2021', 19],
+      ['Josh McCown', 'backup', '7 starts · 2011–13', 14],
+      ['Jim Miller', 'backup', '23 starts · 2000–02', 9],
+      ['Case Keenum', 'gem', '2 starts · 2026', 8],
+      ['Chase Daniel', 'gem', '3 starts · 2018–19', 7],
+      ['Brian Hoyer', 'gem', '5 starts · 2016', 6],
+      ['Tyson Bagent', 'gem', '5 starts · 2023, 2026', 6],
+      ['Kordell Stewart', 'gem', '7 starts · 2003', 5],
+      ['Mike Glennon', 'gem', '4 starts · 2017', 5],
+      ['Matt Barkley', 'gem', '6 starts · 2016', 4],
+      ['Brian Griese', 'gem', '6 starts · 2007', 4],
+      ['Caleb Hanie', 'gem', '4 starts · 2011', 3],
+      ['Jimmy Clausen', 'gem', '2 starts · 2014–15', 3],
+      ['Jason Campbell', 'gem', '1 start · 2012', 3],
+      ['Trevor Siemian', 'gem', '1 start · 2022', 2],
+      ['Chris Chandler', 'gem', '13 starts · 2002–03', 2],
+      ['Cade McNown', 'gem', '9 starts · 2000', 2],
+      ['Nathan Peterman', 'sleeper', '1 start · 2022', 2],
+      ['Craig Krenzel', 'sleeper', '5 starts · 2004', 1],
+      ['Chad Hutchinson', 'sleeper', '5 starts · 2004', 1],
+      ['Henry Burris', 'sleeper', '1 start · 2002', 1],
+      ['Todd Collins', 'sleeper', '1 start · 2010', 1],
+      ['Jonathan Quinn', 'sleeper', '3 starts · 2004', 0],
+      ['Shane Matthews', 'sleeper', '8 starts · 2000–01', 0]
+    ];
+  }
+  renderVals() {
+    var self = this, T = this.tiers(), total = 1004;
+    var st = this.state || {};
+    var q = st.q || '';
+    var sort = st.sort || 'tier';
+    var needle = q.toLowerCase().trim();
+    var rows = this.answers().map(function (a) {
+      var showCounts = total >= 100;
+      var pct = showCounts ? a[3].toLocaleString() : (a[3] / total < 0.01 ? 'Under 1%' : Math.round(a[3] / total * 100) + '%');
+      var unit = showCounts ? (a[3] === 1 ? 'player' : 'players') : 'of players';
+      var mine = a[0] === 'Craig Krenzel', ykb = a[0] === 'Henry Burris';
+      var t = T[ykb ? 'ykb' : a[1]];
+      return {
+        name: a[0], tier: a[1], ctx: a[2], count: a[3], pct: pct,
+        picks: unit, n: unit,
+        last: a[0].split(' ').slice(-1)[0],
+        tierName: ykb ? 'YKB KID' : T[a[1]].name,
+        chip: 'flex:none;font-weight:700;font-size:10px;letter-spacing:0.5px;color:' + t.ink + ';background:' + t.c + ';padding:3px 4px;border:2px solid #1d1a14;white-space:nowrap',
+        style: 'display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #b9ad8c;' + (mine ? 'background:#ffe27a' : (ykb ? 'background:#fff3c4' : ''))
+      };
+    }).filter(function (r) { return !needle || r.name.toLowerCase().indexOf(needle) >= 0; });
+    var groups = ['starter', 'backup', 'gem', 'sleeper'].map(function (k) {
+      var t = T[k];
+      var list = rows.filter(function (r) { return r.tier === k; }).sort(function (a, b) { return b.count - a.count; });
+      return {
+        title: t.name + ' · ' + t.pts + ' PTS',
+        meta: list.length + (list.length === 1 ? ' answer' : ' answers'),
+        style: 'position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:' + t.c + ';color:' + t.ink + ';font-weight:700;font-size:13px;letter-spacing:1px;border-bottom:2px solid #1d1a14',
+        rows: list
+      };
+    }).filter(function (g) { return g.rows.length > 0; });
+    var az = rows.slice().sort(function (a, b) { return a.last.localeCompare(b.last); });
+    var on = 'height:100%;padding:0 12px;border:none;font-family:\'Courier Prime\',monospace;font-weight:700;font-size:14px;cursor:pointer;';
+    var drive = ['starter', 'gem', 'sleeper', 'backup', 'backup', 'gem', 'ykb'];
+    var tabs = drive.map(function (k, i) {
+      var active = i === 2;
+      return {
+        label: 'P' + (i + 1), on: active ? 'true' : 'false',
+        style: 'height:44px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 0 0;cursor:pointer;color:#1d1a14;border:3px solid #0a0a10;background:' + (active ? '#ffe27a' : '#efe6cf'),
+        bar: 'align-self:stretch;height:6px;background:' + T[k].c
+      };
+    });
+    return {
+      q: q,
+      onSearch: function (e) { self.setState({ q: e.target.value }); },
+      byTier: function () { self.setState({ sort: 'tier' }); },
+      byName: function () { self.setState({ sort: 'az' }); },
+      isTier: sort === 'tier',
+      isAZ: sort !== 'tier',
+      tierBtn: on + (sort === 'tier' ? 'background:#1d1a14;color:#f3ead7' : 'background:#efe6cf;color:#1d1a14'),
+      azBtn: on + (sort !== 'tier' ? 'background:#1d1a14;color:#f3ead7' : 'background:#efe6cf;color:#1d1a14'),
+      groups: groups,
+      az: az,
+      empty: rows.length === 0,
+      tabs: tabs
+    };
+  }
+}
+</script>
+</body>
+</html>
