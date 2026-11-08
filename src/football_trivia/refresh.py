@@ -13,9 +13,9 @@ import time
 
 from . import build
 from .db import connect, run, table_exists
-from .sources import nflverse, pageviews, wikidata, wikipedia
+from .sources import nflverse, pageviews, qb_lists, wikidata, wikipedia
 
-STEPS = ["nflverse", "wikidata", "wikipedia", "pageviews", "build"]
+STEPS = ["nflverse", "wikidata", "wikipedia", "qb_lists", "pageviews", "build"]
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -34,6 +34,9 @@ def main(argv: list[str] | None = None) -> None:
         nflverse.refresh(con, log)
     if "wikidata" in steps:
         wikidata.refresh(con, log)
+    if "qb_lists" in steps:
+        qb_lists.refresh(con, log)
+        qb_lists.refresh_redirects(con, log)
     if {"wikipedia", "pageviews"} & set(steps):
         build.build_identity(con, log)
         titles = [t for (t,) in con.execute("SELECT DISTINCT wiki_title FROM players WHERE wiki_title IS NOT NULL ORDER BY 1").fetchall()]
@@ -42,8 +45,9 @@ def main(argv: list[str] | None = None) -> None:
         if "pageviews" in steps:
             pageviews.refresh(con, titles, log)
     if "build" in steps:
-        if not table_exists(con, "raw_wiki_pages"):
-            raise SystemExit("build needs raw_wiki_pages; run `refresh --only wikipedia` first")
+        for t, step in (("raw_wiki_pages", "wikipedia"), ("raw_qb_list_pages", "qb_lists")):
+            if not table_exists(con, t):
+                raise SystemExit(f"build needs {t}; run `refresh --only {step}` first")
         pageviews._ensure_tables(con)
         n_pv = con.execute("SELECT count(*) FROM raw_pageviews_fetched").fetchall()[0][0]
         if n_pv == 0:

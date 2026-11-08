@@ -31,7 +31,11 @@ Pageviews are incremental: after the first run only new months are fetched.
 | `players` | person | `player_id` = gsis id; else `pfr:<id>` (matched via Wikidata on name+DOB); else `nm:<name>\|<dob>` |
 | `player_seasons` | player × season × team | roster membership + listed position. **Not** proof of playing |
 | `player_games` | player × game | games actually played. `sources` ⊂ {stats, snaps, qb_start} |
-| `qb_starts` | team × game | starting QB, from schedules |
+| `qb_starts` | team × game | "starting" QB from schedules (1999+; actually the QB with the most passes) |
+| `qb_list_starts` | page row | parsed Wikipedia QB lists, matched to `player_id`, with `basis` (games/record/split/sole) |
+| `qb_season_starts` | QB × franchise × season | merged starts: Wikipedia < 1999, nflverse ≥ 1999 |
+| `qb_list_crosscheck` | QB × franchise × season | 1999–2025 overlap: match / count_differs / missing_in_* |
+| `qb_list_checks` | team × season | pre-1999 seasons whose listed starts don't add up to games played |
 | `player_awards` | player × award × season | mvp, opoy, dpoy, oroy, droy, roy, afl_mvp, comeback, sb_mvp, sb_champ |
 | `player_honors` | player | pro bowls, all-pro 1st/2nd, AFL all-star, HOF, lifetime pageviews |
 | `aliases` | player × alias | display, first_last, common_first_last, last_only, + `data/aliases.csv` |
@@ -54,7 +58,7 @@ From the `coverage` table (regenerate with `uv run refresh --only build`):
 |---|---|---|
 | Roster membership + listed position | 1920 → now | Season rosters; weekly rosters (mid-season moves) only 2002+ |
 | Stable player identity | ~1975 → now (≈100%) | Pre-1975: 25–90% matched via Wikidata name+DOB; rest get `nm:` ids |
-| QB starts | **1999 → now** | From schedules (`home_qb_id`/`away_qb_id`) |
+| QB starts | **1950 → now** | 1950–1998: Wikipedia starting-QB lists (`qb_season_starts`, source=wikipedia). 1999+: schedules (`home_qb_id`/`away_qb_id`), which is really the QB with the most passes. See `qb_list_crosscheck` |
 | Games played, players with a stat | **1999 → now** | Misses OL and anyone with zero recorded stats |
 | Games played, everyone (incl. OL) | **2013 → now** | Snap counts (nflverse has none for 2012) |
 | Non-QB starts | **not available** | nflverse has no starts for non-QBs |

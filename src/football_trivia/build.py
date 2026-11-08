@@ -18,6 +18,7 @@ import polars as pl
 
 from .db import DATA_DIR, run, write_table
 from .names import norm_name
+from .sources import qb_lists
 from .sources.wikipedia import parse_highlights
 
 
@@ -36,6 +37,8 @@ def build(con, log=print) -> None:
     build_identity(con, log)
     _seasons_games(con, log)
     _honors(con, log)
+    log("build: QB lists")
+    qb_lists.build(con, log)
     _aliases(con, log)
     _coverage(con, log)
 
@@ -44,6 +47,14 @@ def build(con, log=print) -> None:
 
 def _nkey(name_col: str, dob_col: str) -> pl.Expr:
     return pl.col(name_col).map_elements(norm_name, return_dtype=pl.Utf8) + "|" + pl.col(dob_col).cast(pl.Utf8).fill_null("")
+
+
+def _last_key(nkey: str | None) -> str | None:
+    """'billy wade|1930-10-04' -> 'wade|1930-10-04' (None without a name or DOB)."""
+    if not nkey or "|" not in nkey:
+        return None
+    name, dob = nkey.rsplit("|", 1)
+    return f"{name.split()[-1]}|{dob}" if name and dob else None
 
 
 def _identity(con, log) -> None:
@@ -72,11 +83,20 @@ def _identity(con, log) -> None:
     nkey_to_gsis = unique_map(pl.concat([rosters.select("nkey", "gsis_id"), players.select("nkey", "gsis_id")]), "nkey", "gsis_id")
     gsis_to_pfr = unique_map(pl.concat([players.select("gsis_id", "pfr_id"), rosters.select("gsis_id", "pfr_id")]), "gsis_id", "pfr_id")
     nkey_to_pfr_wd = unique_map(wd.filter(~pl.col("nkey").str.ends_with("|")), "nkey", "pfr_id")
+    # fallback for nickname variants ("Billy Wade" vs "Bill Wade"): last name + birth date, if unique
+    wd = wd.with_columns(lkey=pl.col("nkey").map_elements(_last_key, return_dtype=pl.Utf8))
+    lkey_to_pfr_wd = unique_map(wd, "lkey", "pfr_id")
+    # ...and only when exactly one person on the nflverse side has that last name + DOB
+    people = pl.concat([rosters.select("nkey"), players.select("nkey")]).unique()
+    people = people.with_columns(lkey=pl.col("nkey").map_elements(_last_key, return_dtype=pl.Utf8))
+    shared = set(people.group_by("lkey").len().filter(pl.col("len") > 1)["lkey"].drop_nulls().to_list())
+    lkey_to_pfr_wd = {k: v for k, v in lkey_to_pfr_wd.items() if k not in shared}
     pfr_to_wd = {r[1]: (r[0], r[2]) for r in wd.iter_rows()}
 
     def resolve(gsis, pfr, nkey):
         gsis = gsis or nkey_to_gsis.get(nkey)
-        pfr = pfr or (gsis_to_pfr.get(gsis) if gsis else None) or nkey_to_pfr_wd.get(nkey)
+        pfr = (pfr or (gsis_to_pfr.get(gsis) if gsis else None) or nkey_to_pfr_wd.get(nkey)
+               or lkey_to_pfr_wd.get(_last_key(nkey)))
         pid = gsis or (f"pfr:{pfr}" if pfr else f"nm:{nkey}")
         qid, title = pfr_to_wd.get(pfr, (None, None)) if pfr else (None, None)
         return pid, gsis, pfr, qid, title
@@ -117,6 +137,18 @@ def _identity(con, log) -> None:
         wiki_title=pl.col("pfr_id").replace_strict({k: v[1] for k, v in pfr_to_wd.items()}, default=None),
     ).select(from_rosters.columns[:8] + ["college_name", "qid", "wiki_title"]).rename({"college_name": "college"})
     allp = pl.concat([from_rosters, extra.select(from_rosters.columns)], how="vertical_relaxed")
+    # several players claiming one article (bad pfr ids upstream, e.g. a son given his
+    # father's id): keep the one whose DOB matches Wikidata, unlink the rest
+    wd_dob = {r[1]: r[3] for r in wd.select("qid", "pfr_id", "title", "birth_date").iter_rows()}
+    dup = allp.filter(pl.col("wiki_title").is_not_null()).group_by("wiki_title").len().filter(pl.col("len") > 1)["wiki_title"]
+    keep = allp.filter(pl.col("wiki_title").is_in(dup.implode())).filter(
+        pl.col("birth_date") == pl.col("pfr_id").replace_strict(wd_dob, default=None))
+    keep = keep.group_by("wiki_title").agg(pl.col("player_id")).filter(pl.col("player_id").list.len() == 1)
+    keep_ids = set(keep["player_id"].list.first().to_list())
+    unlink = pl.col("wiki_title").is_in(dup.implode()) & ~pl.col("player_id").is_in(list(keep_ids))
+    allp = allp.with_columns(
+        **{c: pl.when(unlink).then(None).otherwise(pl.col(c)) for c in ("pfr_id", "qid", "wiki_title")})
+    log(f"  {dup.len()} articles claimed by several players; {len(keep_ids)} resolved by DOB, rest unlinked")
     write_table(con, "players", allp)
     log(f"  {allp.height} players; {allp['gsis_id'].is_not_null().sum()} gsis, "
         f"{allp['wiki_title'].is_not_null().sum()} with Wikipedia article")

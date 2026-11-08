@@ -65,7 +65,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Data | Available |
 |---|---|
 | Roster membership + listed position | 1920 → now |
-| QB starts | 1999 → now (nflverse); pre-1999 from the Wikipedia QB lists |
+| QB starts | 1999 → now (nflverse); **1950**–1998 from the Wikipedia QB lists (the pages start in 1950; no QB starts before that). Green Bay and the Rams list only per-player totals, so their per-season starts are estimates (`basis = split`) |
 | Games played, players with a recorded stat | 1999 → now |
 | Games played, all positions incl. OL | 2013 → now (snap counts) |
 | Non-QB starts | not available |
@@ -252,7 +252,8 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 
 - Honors weights within F
 - Per-position production metric for `peak`
-- Wikipedia QB-list ingestion + cross-check with nflverse
+- QB starts source when Wikipedia and nflverse disagree: nflverse's schedule `qb_id` is the QB with the most passes, not the starter, and is badly wrong for some 2024–25 teams (see `qb_list_crosscheck`)
+- Pre-1950 QBs: no starts data, so validity falls back to roster membership like other pre-1999 players, or QB prompts start at 1950
 - Pageviews: sum views across an article's previous titles (page moves). The API counts by exact title only, so views before a rename are lost (e.g. "Chris Chandler" → "Chris Chandler (American football)", Nov 2022)
 - Seasons on roster: decide which roster statuses count. nflverse season rosters include practice-squad/reserve players from 2016 (roster count jumps from ~2,060 to ~3,060), which would inflate `seasons` for both career length and non-QB association
 - Games-fallback approval for QBs (pending comparison test)
