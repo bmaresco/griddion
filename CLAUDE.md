@@ -42,7 +42,27 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 - **Position** is the player's listed position in the qualifying seasons (e.g. a gadget player counts as a QB only for seasons he started at QB).
 - Example: Andy Dalton (0 starts for PHI in 2026) is **not** a valid "Eagles QB" answer.
 
-**Known exception — pre-1999 non-QBs.** There is no games-played data before 1999, so we can't confirm these players appeared in a game. For non-QBs in seasons before 1999, **being on a regular-season roster** in the context counts as valid. The rules for QBs (all eras) and for non-QBs from 1999 on are unchanged.
+**Known exception — pre-1999 non-QBs.** There is no games-played data before 1999, so we can't confirm these players appeared in a game. For non-QBs in seasons before 1999, **being on the active regular-season roster** (see *Roster status* below) in the context counts as valid. The rules for QBs and for non-QBs from 1999 on are unchanged.
+
+**Known exception — pre-1950 QBs.** The Wikipedia starting-QB lists begin in 1950, so there are no starts before then. Pre-1950 QBs are **not excluded** (Sid Luckman must be a valid Bears QB): they use the roster rule, by listed position (QB on the active roster). `/probe` lists them separately for review.
+
+**QB starts source.** Wikipedia's "List of [team] starting quarterbacks" is the primary source for **every season**. nflverse is the cross-check. The exception is **Green Bay and the Rams from 1999 on**, where the Wikipedia pages give only per-player totals, so nflverse is used. Reason: nflverse's schedule `qb_id` is the QB with the most passes, not the starter (e.g. it credits Garoppolo with Brady's 2014 week 17 start and shows Jayden Daniels with 12 of his 17 2024 starts). Current-season mismatches between the two are **flagged in `/probe` and the diff report, never silently resolved**.
+
+**Roster status** (codes from nflverse's `dictionary_roster_status`):
+
+| Code | nflverse meaning | Counts as active roster |
+|---|---|---|
+| `ACT` | On the active roster | yes |
+| `TRC` `TRD` `TRT` | "Released from the practice squad" | **before 1989 only.** Practice squads didn't exist until 1989; in older data these codes mark players who left mid-season after playing (e.g. Howard Mudd, 49ers 1969). From 1989 they count as no |
+| `INA` | Under contract but not on the active roster, inactive | no |
+| `DEV` | Practice squad | no |
+| `RES` `PUP` `RSN` | Reserve list (IR) / PUP / non-football injury | no |
+| `CUT` `NWT` `RFA` `UFA` `RSR` | Released / waived | no |
+| `SUS` `EXE` `E14` `RET` `TRL` | Suspended / exempt / international / retired / unknown | no |
+
+- **A season counts** for a player and team if he appeared in ≥ 1 regular-season game where games data exists (any recorded stat 1999+, snap counts 2013+). Otherwise it counts if he had an active-roster status: any `ACT` week in the weekly rosters (2002+), or the season roster status (before 2002).
+- **Seasons spent entirely on IR or the practice squad don't count**: no games and no active week.
+- Known limit: before 2002 there is only one status per season (end of season). A player whose season status is `RES` or `CUT` but who played earlier that season (e.g. David Akers, Washington 1998) is excluded. `/probe` lists these as edge cases for review.
 
 ---
 
@@ -50,9 +70,10 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 
 | Source | Used for |
 |---|---|
-| **nflverse** (`nflreadpy`) | Rosters, games, QB starts (1999+), season stats, player IDs/cross-refs, names |
+| **nflverse** (`nflreadpy`) | Rosters, games, season stats, player IDs/cross-refs, names; QB starts for GB and LAR 1999+ and as the cross-check elsewhere |
 | **Wikipedia** (CC BY-SA) | Awards (MVP, OPOY, DPOY, OROY, DROY), Pro Bowl / All-Pro, Hall of Fame |
-| **Wikipedia "List of [team] starting quarterbacks"** (CC BY-SA, all 32 franchises) | QB starts **before 1999**. Seasons from 1999 on use nflverse. Overlap years are cross-checked and mismatches flagged |
+| **Wikipedia "List of [team] starting quarterbacks"** (CC BY-SA, all 32 franchises) | QB starts, **primary source for every season** (see §3). Cross-checked against nflverse; mismatches flagged |
+| **`data/team_alignment.csv`** (hand-maintained, reviewable) | League, conference and division per franchise-season, 1950→now, including the AFL 1960–69 |
 | **Wikimedia Pageviews API** | Player fame (pageviews, available from mid-2015 onward) |
 | **Wikidata** (CC0) | ID crosswalk only: Pro Football Reference ID → Wikipedia article |
 
@@ -65,7 +86,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Data | Available |
 |---|---|
 | Roster membership + listed position | 1920 → now |
-| QB starts | 1999 → now (nflverse); **1950**–1998 from the Wikipedia QB lists (the pages start in 1950; no QB starts before that). Green Bay and the Rams list only per-player totals, so their per-season starts are estimates (`basis = split`) |
+| QB starts | **1950 → now** from the Wikipedia QB lists (the pages start in 1950; none before). Green Bay and the Rams list only per-player totals: nflverse for them from 1999, estimates (`basis = split`) before 1999 |
 | Games played, players with a recorded stat | 1999 → now |
 | Games played, all positions incl. OL | 2013 → now (snap counts) |
 | Non-QB starts | not available |
@@ -97,6 +118,11 @@ Supported filter types (build as a reusable library):
 - `stat_threshold` (e.g. receiving yards ≥ 1500 in a single season)
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
+
+Filter rules:
+- **Team** means franchise (`data/team_franchises.csv`), so "Colts" includes Baltimore. **AFL seasons (1960–69) count** for team prompts.
+- **Conference** prompts (AFC/NFC) start in **1970**. Division prompts use the division in force that season (`data/team_alignment.csv`).
+- **Awards: AP only.** Wikipedia variants from other bodies (PFWA, UPI, Sporting News, NEA, …) are ignored. MVP prompts start in **1957**, OROY/DROY in **1967** (the first AP seasons).
 
 ---
 
@@ -162,11 +188,11 @@ A       = 1                                       for trait prompts
 ```
 - `sqrt` softens the drop-off: half a career ≈ 0.71.
 - `peak` keeps a memorable short stint (one great season with a team) from being treated like a cameo.
-- **TODO:** define the per-position production metric for `peak`.
+- **`peak` applies only to QB, RB, WR, TE**, using position-appropriate production: passing yards (QB), yards from scrimmage (RB, WR, TE). All other positions, and all pre-1999 players (no season stats), use **`A = sqrt(share)`** only.
 
 **Units:**
-- **QBs: starts.** Wikipedia QB lists before 1999, nflverse from 1999 on, so full history.
-- **Everyone else: seasons on roster** (seasons with the team ÷ career seasons). Available for every player back to 1920.
+- **QBs: starts.** Wikipedia QB lists, all seasons (nflverse for GB/LAR 1999+; see §3), 1950 on. Pre-1950 QBs use seasons.
+- **Everyone else: seasons on roster** (seasons with the team ÷ career seasons), counted by the §3 roster-status rule. Available for every player back to 1920.
 - **Games** only where they are complete (2013+, all positions) **and** they improve the result.
 - **One unit per prompt.** Never mix units within a prompt: if any valid answer lacks the chosen unit, score every player in that prompt with the fallback.
 - **Games-fallback comparison test (QBs only):** before approving games as a fallback for QB prompts, score modern QB prompts both ways (starts vs games) and compare tiers. Approve only if tiers barely change.
@@ -251,10 +277,6 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 ## 11. Open items
 
 - Honors weights within F
-- Per-position production metric for `peak`
-- QB starts source when Wikipedia and nflverse disagree: nflverse's schedule `qb_id` is the QB with the most passes, not the starter, and is badly wrong for some 2024–25 teams (see `qb_list_crosscheck`)
-- Pre-1950 QBs: no starts data, so validity falls back to roster membership like other pre-1999 players, or QB prompts start at 1950
-- Pageviews: sum views across an article's previous titles (page moves). The API counts by exact title only, so views before a rename are lost (e.g. "Chris Chandler" → "Chris Chandler (American football)", Nov 2022)
-- Seasons on roster: decide which roster statuses count. nflverse season rosters include practice-squad/reserve players from 2016 (roster count jumps from ~2,060 to ~3,060), which would inflate `seasons` for both career length and non-QB association
+- AAFC seasons (Browns and 49ers 1946–49): count for team prompts or not? (Currently not; the AFL rule doesn't cover them)
 - Games-fallback approval for QBs (pending comparison test)
 - Game title

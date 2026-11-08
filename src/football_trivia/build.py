@@ -18,7 +18,7 @@ import polars as pl
 
 from .db import DATA_DIR, run, write_table
 from .names import norm_name
-from .sources import qb_lists
+from .sources import ap_awards, qb_lists
 from .sources.wikipedia import parse_highlights
 
 
@@ -30,6 +30,8 @@ def _franchise_sql(code: str, season: str) -> str:
 def build_identity(con, log=print) -> None:
     write_table(con, "team_franchises", pl.read_csv(DATA_DIR / "team_franchises.csv", infer_schema_length=0)
                 .with_columns(pl.col("season_min", "season_max").cast(pl.Int32)))
+    write_table(con, "team_alignment", pl.read_csv(DATA_DIR / "team_alignment.csv", infer_schema_length=0, comment_prefix="#")
+                .with_columns(pl.col("season_min", "season_max").cast(pl.Int32)))
     _identity(con, log)
 
 
@@ -39,6 +41,7 @@ def build(con, log=print) -> None:
     _honors(con, log)
     log("build: QB lists")
     qb_lists.build(con, log)
+    _team_seasons(con, log)
     _aliases(con, log)
     _coverage(con, log)
 
@@ -161,14 +164,14 @@ def _seasons_games(con, log) -> None:
     # roster rows are keyed via nkey, which is computed in Python (norm_name)
     r = pl.concat(
         [
-            con.sql("SELECT season, team, position, depth_chart_position, status, full_name, CAST(birth_date AS VARCHAR) AS birth_date, gsis_id FROM raw_rosters").pl(),
-            con.sql("SELECT season, team, position, depth_chart_position, status, full_name, CAST(birth_date AS VARCHAR) AS birth_date, gsis_id FROM raw_rosters_weekly WHERE game_type = 'REG'").pl(),
+            con.sql("SELECT season, NULL::INT AS week, team, position, depth_chart_position, status, full_name, CAST(birth_date AS VARCHAR) AS birth_date, gsis_id FROM raw_rosters").pl(),
+            con.sql("SELECT season, week, team, position, depth_chart_position, status, full_name, CAST(birth_date AS VARCHAR) AS birth_date, gsis_id FROM raw_rosters_weekly WHERE game_type = 'REG'").pl(),
         ],
         how="vertical_relaxed",
     ).with_columns(pl.col("birth_date").str.slice(0, 10)).with_columns(nkey=_nkey("full_name", "birth_date"))
     ids = con.sql("SELECT * FROM _roster_ids").pl()
     r = r.join(ids, on=["nkey", "gsis_id", "season"], how="left", nulls_equal=True)
-    write_table(con, "_roster_rows", r.select("player_id", "season", "team", "position", "depth_chart_position", "status"))
+    write_table(con, "_roster_rows", r.select("player_id", "season", "week", "team", "position", "depth_chart_position", "status"))
 
     fr = _franchise_sql
     run(con, f"""
@@ -234,7 +237,21 @@ def _honors(con, log) -> None:
                      "all_pro_2nd": h["all_pro_2nd"], "afl_all_star": h["afl_all_star"], "hof": bool(hof),
                      "has_highlights": text is not None})
         awards.extend({"player_id": pid, "award": k, "season": s} for k, s in h["awards"])
-    write_table(con, "player_awards", pl.DataFrame(awards, schema={"player_id": pl.Utf8, "award": pl.Utf8, "season": pl.Int32}))
+    infobox = pl.DataFrame(awards, schema={"player_id": pl.Utf8, "award": pl.Utf8, "season": pl.Int32})
+    # the six AP awards come from the AP award pages (spec §5: AP only); infoboxes keep the rest
+    ap = ap_awards.parse_all(con)
+    redirects = dict(con.execute("SELECT link_title, canonical_title FROM raw_ap_award_redirects").fetchall())
+    by_title = dict(con.execute("SELECT wiki_title, player_id FROM players WHERE wiki_title IS NOT NULL").fetchall())
+    ap = ap.with_columns(player_id=pl.col("wiki_title").map_elements(
+        lambda t: by_title.get(redirects.get(t, t)) or by_title.get(t), return_dtype=pl.Utf8))
+    unmatched = ap.filter(pl.col("player_id").is_null())
+    if unmatched.height:
+        log(f"  AP winners not matched to a player: {unmatched.select('award', 'season', 'name').rows()}")
+    awards_df = pl.concat([
+        infobox.filter(~pl.col("award").is_in(list(ap_awards.PAGES) + ["roy"])).with_columns(source=pl.lit("infobox")),
+        ap.filter(pl.col("player_id").is_not_null()).select("player_id", "award", "season").with_columns(source=pl.lit("ap_list")),
+    ])
+    write_table(con, "player_awards", awards_df)
     write_table(con, "_honors", pl.DataFrame(rows))
     run(con, """
     CREATE OR REPLACE TABLE player_honors AS
@@ -270,7 +287,7 @@ def _honors(con, log) -> None:
         WITH c AS (SELECT award, season, count(*) n FROM player_awards
                    WHERE award IN ('mvp','opoy','dpoy','oroy','droy') AND season IS NOT NULL GROUP BY ALL)
         SELECT award, season, n FROM c WHERE n > 2 ORDER BY award, season""").fetchall()
-    log(f"  {pages.height} wiki pages parsed; {len(awards)} award rows; seasons with >2 winners: {bad[:10]}")
+    log(f"  {pages.height} wiki pages parsed; {awards_df.height} award rows ({ap.height} from AP pages); seasons with >2 winners: {bad[:10]}")
 
 
 # ------------------------------------------------------------------ aliases
@@ -317,3 +334,106 @@ def _coverage(con, log) -> None:
     FROM ps LEFT JOIN g USING (season) LEFT JOIN q USING (season) LEFT JOIN w USING (season)
     ORDER BY season
     """)
+
+
+# ---------------------------------------------------------- team seasons (§3)
+
+# roster position code -> group; filters accept a group or a specific code
+POSITION_GROUPS = {
+    "QB": "QB",
+    "RB": "RB", "FB": "RB", "HB": "RB", "TB": "RB", "WB": "RB", "BB": "RB",
+    "WR": "WR", "TE": "TE",
+    "OL": "OL", "T": "OL", "G": "OL", "C": "OL", "OT": "OL", "OG": "OL",
+    "DL": "DL", "DE": "DL", "DT": "DL", "NT": "DL", "DG": "DL",
+    "LB": "LB", "OLB": "LB", "ILB": "LB", "MLB": "LB",
+    "DB": "DB", "CB": "DB", "S": "DB", "SS": "DB", "FS": "DB", "SAF": "DB",
+    "K": "K", "P": "P", "LS": "LS",
+}
+ACTIVE = "('ACT')"
+ACTIVE_PRE_1989 = "('ACT', 'TRC', 'TRD', 'TRT')"  # no practice squads before 1989 (§3)
+UNCONFIRMED = "('RES', 'PUP', 'RSN', 'CUT', 'INA', 'NWT', 'SUS', 'EXE', 'TRC', 'TRD', 'TRT')"
+
+
+def _team_seasons(con, log) -> None:
+    """player_team_seasons: one row per player x franchise x season with the §3 verdict.
+
+    counted  - the season counts (validity for non-QBs, seasons unit for association)
+    basis    - qb_start | games | active_week | season_status | none
+    qb_starts- regular-season starts (Wikipedia primary; nflverse for GB/LA 1999+)
+    unconfirmed_status - excluded pre-2002 season whose status (RES/CUT/...) can't say if he played
+    """
+    log("build: player_team_seasons")
+    groups = pl.DataFrame({"code": list(POSITION_GROUPS), "pos_group": list(POSITION_GROUPS.values())})
+    write_table(con, "position_groups", groups)
+
+    # QB starts per §3: Wikipedia every season, except GB/LA from 1999 (nflverse)
+    run(con, """
+    CREATE OR REPLACE TABLE qb_starts_final AS
+    SELECT player_id, franchise, season, starts, 'wikipedia' AS source, basis
+    FROM (SELECT player_id, franchise, season, sum(starts) starts, string_agg(DISTINCT basis, ',') basis
+          FROM qb_list_starts WHERE player_id IS NOT NULL GROUP BY ALL)
+    WHERE NOT (franchise IN ('GB', 'LA') AND season >= 1999)
+    UNION ALL
+    SELECT player_id, franchise, season, count(*)::DOUBLE, 'nflverse', 'games'
+    FROM qb_starts WHERE game_type = 'REG' AND franchise IN ('GB', 'LA') AND season >= 1999
+    GROUP BY ALL
+    """)
+
+    run(con, f"""
+    CREATE OR REPLACE TABLE player_team_seasons AS
+    WITH rr AS (
+        SELECT r.*, {_franchise_sql('r.team', 'r.season')} AS franchise FROM _roster_rows r WHERE player_id IS NOT NULL
+    ),
+    roster AS (
+        SELECT player_id, franchise, season,
+               mode(position) FILTER (WHERE week IS NULL) AS season_position,
+               mode(position) AS any_position,
+               mode(depth_chart_position) AS depth_chart_position,
+               bool_or(week IS NOT NULL AND status IN {ACTIVE}) AS active_week,
+               bool_or(week IS NOT NULL) AS has_weekly,
+               bool_or(week IS NULL AND status IN {ACTIVE}) OR
+                 (season < 1989 AND bool_or(week IS NULL AND status IN {ACTIVE_PRE_1989})) AS active_season_status,
+               list_distinct(list(status) FILTER (WHERE week IS NULL)) AS season_statuses
+        FROM rr WHERE franchise IS NOT NULL GROUP BY player_id, franchise, season
+    ),
+    career_pos AS (  -- fallback for mid-season signings missing from that roster, and blank old rows
+        SELECT r.player_id, mode(coalesce(pg.pos_group, dg.pos_group)) AS pos_group
+        FROM rr r LEFT JOIN position_groups pg ON pg.code = r.position
+        LEFT JOIN position_groups dg ON dg.code = r.depth_chart_position
+        GROUP BY r.player_id
+    ),
+    g AS (
+        SELECT player_id, franchise, season, count(*) AS games
+        FROM player_games WHERE game_type = 'REG' AND franchise IS NOT NULL GROUP BY ALL
+    ),
+    q AS (SELECT player_id, franchise, season, sum(starts) AS qb_starts, any_value(source) AS qb_source,
+                 any_value(basis) AS qb_basis FROM qb_starts_final GROUP BY ALL),
+    keys AS (SELECT player_id, franchise, season FROM roster UNION SELECT player_id, franchise, season FROM g
+             UNION SELECT player_id, franchise, season FROM q)
+    SELECT k.player_id, k.franchise, k.season,
+           coalesce(roster.season_position, roster.any_position, CASE WHEN q.qb_starts > 0 THEN 'QB' END) AS position,
+           CASE WHEN q.qb_starts > 0 THEN 'QB' ELSE coalesce(pg.pos_group, dg.pos_group, cp.pos_group) END AS pos_group,
+           roster.depth_chart_position,
+           coalesce(g.games, 0) AS games,
+           coalesce(q.qb_starts, 0) AS qb_starts, q.qb_source, q.qb_basis,
+           CASE WHEN q.qb_starts > 0 THEN 'qb_start' WHEN g.games > 0 THEN 'games'
+                WHEN roster.active_week THEN 'active_week'
+                WHEN NOT coalesce(roster.has_weekly, false) AND k.season < 2002 AND roster.active_season_status THEN 'season_status'
+                ELSE 'none' END AS basis,
+           coalesce(g.games > 0 OR q.qb_starts > 0 OR roster.active_week
+             OR (NOT coalesce(roster.has_weekly, false) AND k.season < 2002 AND roster.active_season_status), false) AS counted,
+           (k.season < 2002 AND coalesce(g.games, 0) = 0 AND NOT coalesce(roster.active_season_status, false)
+             AND list_has_any(roster.season_statuses, {UNCONFIRMED.replace("(", "[").replace(")", "]")})) AS unconfirmed_status,
+           al.league, al.conference, al.division
+    FROM keys k
+    LEFT JOIN roster USING (player_id, franchise, season)
+    LEFT JOIN g USING (player_id, franchise, season)
+    LEFT JOIN q USING (player_id, franchise, season)
+    LEFT JOIN position_groups pg ON pg.code = coalesce(roster.season_position, roster.any_position)
+    -- 'SPEC' (1981-2001 K/P/LS) and blanks: fall back to the depth-chart position
+    LEFT JOIN position_groups dg ON dg.code = roster.depth_chart_position
+    LEFT JOIN career_pos cp ON cp.player_id = k.player_id
+    LEFT JOIN team_alignment al ON al.franchise = k.franchise AND k.season BETWEEN al.season_min AND al.season_max
+    """)
+    n = con.execute("SELECT count(*), count(*) FILTER (WHERE counted), count(*) FILTER (WHERE unconfirmed_status) FROM player_team_seasons").fetchall()[0]
+    log(f"  {n[0]} player-team-seasons; {n[1]} counted; {n[2]} pre-2002 unconfirmed (excluded, listed in probe)")

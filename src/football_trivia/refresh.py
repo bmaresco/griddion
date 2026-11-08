@@ -13,7 +13,7 @@ import time
 
 from . import build
 from .db import connect, run, table_exists
-from .sources import nflverse, pageviews, qb_lists, wikidata, wikipedia
+from .sources import ap_awards, nflverse, pageviews, qb_lists, wikidata, wikipedia
 
 STEPS = ["nflverse", "wikidata", "wikipedia", "qb_lists", "pageviews", "build"]
 
@@ -37,6 +37,7 @@ def main(argv: list[str] | None = None) -> None:
     if "qb_lists" in steps:
         qb_lists.refresh(con, log)
         qb_lists.refresh_redirects(con, log)
+        ap_awards.refresh(con, log)
     if {"wikipedia", "pageviews"} & set(steps):
         build.build_identity(con, log)
         titles = [t for (t,) in con.execute("SELECT DISTINCT wiki_title FROM players WHERE wiki_title IS NOT NULL ORDER BY 1").fetchall()]
@@ -47,7 +48,7 @@ def main(argv: list[str] | None = None) -> None:
             pageviews.refresh_moves(con, titles, log)
             pageviews.refresh_moved_views(con, log)
     if "build" in steps:
-        for t, step in (("raw_wiki_pages", "wikipedia"), ("raw_qb_list_pages", "qb_lists")):
+        for t, step in (("raw_wiki_pages", "wikipedia"), ("raw_qb_list_pages", "qb_lists"), ("raw_ap_award_pages", "qb_lists")):
             if not table_exists(con, t):
                 raise SystemExit(f"build needs {t}; run `refresh --only {step}` first")
         pageviews._ensure_tables(con)

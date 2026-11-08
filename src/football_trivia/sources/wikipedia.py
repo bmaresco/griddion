@@ -88,6 +88,8 @@ def clean_wikitext(s: str) -> str:
     s = re.sub(r"<ref.*?</ref>", "", s, flags=re.S)
     s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
     s = re.sub(r"<br\s*/?>", "\n", s)
+    # season templates carry the year: {{nfly|2021}}, {{NFL Year|1985}}, {{afly|1966}}
+    s = re.sub(r"\{\{\s*(?:nfl|afl)\s*y(?:ea)?r?\s*\|\s*(\d{4})[^{}]*\}\}", r"\1", s, flags=re.I)
     for _ in range(3):  # nested templates
         s = re.sub(r"\{\{[^{}]*\}\}", "", s)
     s = re.sub(r"\[\[[^\]|]*\|([^\]]*)\]\]", r"\1", s)
@@ -114,20 +116,25 @@ def _years(line: str) -> list[int]:
 
 
 # (award key, required regex, forbidden regex). Lines are cleaned display text.
+# AP only (spec §5): lines naming another voting body are dropped for every award.
+NON_AP = r"PFWA|Pro Football Writers|UPI|United Press|Sporting News|NEA|Newspaper|Pro Football Weekly|Bert Bell|Kansas City Committee|Maxwell"
 AWARD_RULES = [
-    # AP MVP only: drop NFL Europe/World League, side-of-ball "MVPs", and other voting bodies
+    # also drop NFL Europe/World League and side-of-ball "MVPs"
     ("mvp", r"\b(NFL|AP)\b.*\b(Most Valuable Player|MVP)\b",
-     r"Bowl|AFL|playoff|Championship Game|Europ|World League|Offensive|Defensive|PFWA|UPI|Sporting News|Bert Bell|Newspaper"),
-    ("afl_mvp", r"\bAFL\b.*\b(Most Valuable Player|MVP)\b", r"Bowl|All-Star"),
-    ("opoy", r"\bNFL Offensive Player of the Year\b", r"Rookie"),
-    ("dpoy", r"\bNFL Defensive Player of the Year\b", r"Rookie"),
-    ("oroy", r"\bNFL Offensive Rookie of the Year\b", r"$^"),
-    ("droy", r"\bNFL Defensive Rookie of the Year\b", r"$^"),
-    ("roy", r"\bNFL Rookie of the Year\b", r"$^"),
-    ("comeback", r"\bNFL Comeback Player of the Year\b", r"$^"),
+     rf"Bowl|AFL|playoff|Championship Game|Europ|World League|Offensive|Defensive|Junior|Global|{NON_AP}"),
+    ("afl_mvp", r"\bAFL\b.*\b(Most Valuable Player|MVP)\b", rf"Bowl|All-Star|{NON_AP}"),
+    ("opoy", r"\bNFL Offensive Player of the Year\b", rf"Rookie|{NON_AP}"),
+    ("dpoy", r"\bNFL Defensive Player of the Year\b", rf"Rookie|{NON_AP}"),
+    ("oroy", r"\bNFL Offensive Rookie of the Year\b", NON_AP),
+    ("droy", r"\bNFL Defensive Rookie of the Year\b", NON_AP),
+    ("roy", r"\bNFL Rookie of the Year\b", NON_AP),
+    ("comeback", r"\bNFL Comeback Player of the Year\b", NON_AP),
     ("sb_mvp", r"\bSuper Bowl (Most Valuable Player|MVP)\b", r"$^"),
     ("sb_champ", r"\bSuper Bowl champion\b", r"$^"),
 ]
+
+# first AP season per award (spec §5); earlier rows are other bodies' versions
+AP_FIRST_SEASON = {"mvp": 1957, "opoy": 1972, "dpoy": 1971, "oroy": 1967, "droy": 1967, "comeback": 1998}
 
 
 def parse_highlights(text: str | None) -> dict:

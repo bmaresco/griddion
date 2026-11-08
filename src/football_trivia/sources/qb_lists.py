@@ -259,7 +259,8 @@ def refresh_redirects(con, log=print) -> None:
 
 # --------------------------------------------------------------------- build
 
-CROSSCHECK_LAST_SEASON = 2025  # last complete season; pages are edited mid-season
+# Cross-check runs through the current season: in-season page lag is exactly what
+# §3 wants flagged (in /probe and the diff report), never silently resolved.
 
 
 def build(con, log=print) -> None:
@@ -308,10 +309,10 @@ def build(con, log=print) -> None:
     CREATE OR REPLACE TABLE qb_list_crosscheck AS
     WITH w AS (SELECT player_id, franchise, season, sum(starts) starts, any_value(name) name,
                       bool_or(basis = 'split') estimated
-               FROM qb_list_starts WHERE season BETWEEN 1999 AND {CROSSCHECK_LAST_SEASON}
+               FROM qb_list_starts WHERE season >= 1999
                GROUP BY ALL),
          n AS (SELECT player_id, franchise, season, count(*)::DOUBLE starts
-               FROM qb_starts WHERE game_type = 'REG' AND season <= {CROSSCHECK_LAST_SEASON} GROUP BY ALL)
+               FROM qb_starts WHERE game_type = 'REG' AND season >= 1999 GROUP BY ALL)
     SELECT coalesce(w.franchise, n.franchise) franchise, coalesce(w.season, n.season) season,
            coalesce(w.player_id, n.player_id) player_id, w.name wiki_name,
            w.starts wiki_starts, n.starts nflverse_starts,
@@ -336,4 +337,4 @@ def build(con, log=print) -> None:
     pre = con.execute("SELECT count(*), count(DISTINCT player_id), min(season) FROM qb_season_starts WHERE source='wikipedia'").fetchall()[0]
     log(f"  qb lists: {df.height} rows parsed, {unmatched.height} unmatched to a player")
     log(f"  pre-1999 QB seasons: {pre[0]} rows, {pre[1]} QBs, from {pre[2]}; {checks.height} team-seasons fail the games check")
-    log(f"  1999-{CROSSCHECK_LAST_SEASON} cross-check vs nflverse: {cc}")
+    log(f"  1999-now cross-check vs nflverse: {cc}")

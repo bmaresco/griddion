@@ -58,3 +58,10 @@ def test_mvp_excludes_non_ap_variants():
     ]:
         assert not any(k == "mvp" for k, _ in parse_highlights(line)["awards"]), line
     assert ("mvp", 2003) in parse_highlights("* [[NFL Most Valuable Player|NFL co-MVP]] (2003)")["awards"]
+
+
+def test_year_templates_and_junior_mvp():
+    r = parse_highlights("* [[AP NFL Offensive Player of the Year|NFL Offensive Player of the Year]] ({{nfly|2021}})")
+    assert ("opoy", 2021) in r["awards"]
+    r = parse_highlights("* 3× [[NFL Global Junior Championship]] MVP (I, II, III)")
+    assert not any(k == "mvp" for k, _ in r["awards"])
