@@ -48,7 +48,7 @@ for v in TIER_INFO.values():
 
 STAT_UNIT = {"passing_yards": "yds", "rushing_yards": "yds", "receiving_yards": "yds", "scrimmage_yards": "yds",
              "passing_tds": "TD", "rushing_tds": "TD", "receiving_tds": "TD", "receptions": "rec",
-             "sacks": "sacks", "interceptions": "INT"}
+             "sacks": "sacks", "interceptions": "INT", "field_goals": "FG"}
 
 
 # ------------------------------------------------------------------ schedule

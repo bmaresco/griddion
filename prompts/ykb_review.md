@@ -23,7 +23,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 3 | 2026-11-11 | 3 | Name a skill player (RB/WR/TE) who played for the Bears and the Packers | Gary Barnes | Bears 1964 · Packers 1962 | default | pfr:BarnGa00 |
 | 3 | 2026-11-11 | 4 | Name a skill player (RB/WR/TE) who played for the Giants and Washington | Dan Lewis | Giants 1966 · Washington 1965 | default | pfr:LewiDa02 |
 | 3 | 2026-11-11 | 5 | Name a QB from the 1970s | Joe Montana | 49ers · 1979 | default | 00-0011493 |
-| 3 | 2026-11-11 | 6 | Name a QB with a 3,500+ passing yard season | Mark Brunell | 3,640 yds · 2000 | default | 00-0002110 |
+| 3 | 2026-11-11 | 6 | Name a kicker with a 30+ field goal season | Kris Brown | 30 FG · 2001 | default | 00-0001980 |
 | 3 | 2026-11-11 | 7 | Name an AP Offensive Rookie of the Year | Tetairoa McMillan | Won 2025 | default | 00-0040124 |
 | 4 | 2026-11-12 | 1 | Name a Chiefs TE | Troy Drayton | 7 games · 2000 | default | 00-0004524 |
 | 4 | 2026-11-12 | 2 | Name an NFC East QB | Geno Smith | Giants · 2017 | default | 00-0030565 |
@@ -35,7 +35,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 5 | 2026-11-13 | 1 | Name a Lions QB | Frank Reich | 2 starts · 1997–98 | default | 00-0013558 |
 | 5 | 2026-11-13 | 2 | Name a Colts WR | Alex Hawkins | 9 seasons · 1959–68 | default | pfr:HawkAl00 |
 | 5 | 2026-11-13 | 3 | Name a player who played for the Cardinals and the Rams | Matthew Mulligan | Cardinals 2014 · Rams 2012 | default | 00-0026008 |
-| 5 | 2026-11-13 | 4 | Name a skill player (RB/WR/TE) who played for the Steelers and the Browns | Tom Watkins | Steelers 1968 · Browns 1961 | default | pfr:WatkTo00 |
+| 5 | 2026-11-13 | 4 | Name a player who played for the Steelers and the Browns | David Dunn | Steelers 1998 · Browns 1999 | default | 00-0004634 |
 | 5 | 2026-11-13 | 5 | Name an AFC WR from the 1990s | Brett Perriman | Dolphins · 1997 | default | 00-0012803 |
 | 5 | 2026-11-13 | 6 | Name a DB with a 5+ interception season | Ray Buchanan | 6 INT · 2000 | default | 00-0002166 |
 | 5 | 2026-11-13 | 7 | Name an AP Comeback Player of the Year | Garrison Hearst | Won 2001 | default | 00-0007180 |
@@ -56,7 +56,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 8 | 2026-11-16 | 1 | Name a Bengals WR | Cliff Russell | 13 games · 2004 | default | 00-0021212 |
 | 8 | 2026-11-16 | 2 | Name an NFC South QB | Tua Tagovailoa | Falcons · 2026 | default | 00-0036212 |
 | 8 | 2026-11-16 | 3 | Name a player who played for the Broncos and the Chargers | Dante Rosario | Broncos 2011 · Chargers 2012 | default | 00-0025542 |
-| 8 | 2026-11-16 | 4 | Name a skill player (RB/WR/TE) who played for the Colts and the Titans | Hubie Oliver | Colts 1986 · Titans 1986 | default | OLI415288 |
+| 8 | 2026-11-16 | 4 | Name a player who played for the Colts and the Titans | Caraun Reid | Colts 2017 · Titans 2021 | default | 00-0031071 |
 | 8 | 2026-11-16 | 5 | Name a QB from the 1980s | Bob Griese | Dolphins · 1980 | default | GRI037752 |
 | 8 | 2026-11-16 | 6 | Name a WR with an 85+ reception season | Steve Smith | 107 rec · 2009 | default | 00-0025438 |
 | 8 | 2026-11-16 | 7 | Name an AP Offensive Rookie of the Year | Tetairoa McMillan | Won 2025 | default | 00-0040124 |
@@ -65,7 +65,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 9 | 2026-11-17 | 3 | Name a player who played for the Falcons and the Saints | Josh Andrews | Falcons 2021 · Saints 2022 | default | 00-0030706 |
 | 9 | 2026-11-17 | 4 | Name a player who played for the Lions and the Vikings | Tramaine Brock | Lions 2020 · Vikings 2017 | default | 00-0027375 |
 | 9 | 2026-11-17 | 5 | Name an AFC RB from the 1970s | Dick Hoak | Steelers · 1970 | default | pfr:HoakDi00 |
-| 9 | 2026-11-17 | 6 | Name a QB with a 25+ passing TD season | Caleb Williams | 27 TD · 2025 | default | 00-0039918 |
+| 9 | 2026-11-17 | 6 | Name a TE with a 65+ reception season | Gary Barnidge | 79 rec · 2015 | default | 00-0026281 |
 | 9 | 2026-11-17 | 7 | Name an AP Defensive Rookie of the Year | Leslie O'Neal | Won 1986 | default | 00-0012274 |
 | 10 | 2026-11-18 | 1 | Name an Eagles TE | Stephen Spach | 7 games · 2005 | default | 00-0023108 |
 | 10 | 2026-11-18 | 2 | Name an AFC North RB | Jordan Todman | Steelers · 2015 | default | 00-0028121 |
@@ -77,7 +77,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 11 | 2026-11-19 | 1 | Name a 49ers QB | Sam Darnold | 1 start · 2023 | default | 00-0034869 |
 | 11 | 2026-11-19 | 2 | Name a Vikings WR | Gary Ballman | 1 season · 1973 | default | pfr:BallGa00 |
 | 11 | 2026-11-19 | 3 | Name a player who played for the Falcons and the Panthers | Terrell McClain | Falcons 2018 · Panthers 2011 | default | 00-0028003 |
-| 11 | 2026-11-19 | 4 | Name a player who played for the Jaguars and the Texans | Jamie Winborn | Jaguars 2005 · Texans 2009 | default | 00-0020470 |
+| 11 | 2026-11-19 | 4 | Name a player who played for the Giants and the Eagles | Ryan Lewis | Giants 2020 · Eagles 2019 | default | 00-0033608 |
 | 11 | 2026-11-19 | 5 | Name an NFC WR from the 1980s | Carlos Carson | Eagles · 1989 | default | CAR566826 |
 | 11 | 2026-11-19 | 6 | Name a RB with a 500+ receiving yard season | Duke Johnson | 693 yds · 2017 | default | 00-0032257 |
 | 11 | 2026-11-19 | 7 | Name an AP MVP | Y.A. Tittle | Won 1963 | default | pfr:TittY.00 |
@@ -98,7 +98,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 14 | 2026-11-22 | 1 | Name a Bears QB | Case Keenum | 2 starts · 2025–26 | default | 00-0028986 |
 | 14 | 2026-11-22 | 2 | Name an NFC West TE | Justin Peelle | 49ers · 2011 | default | 00-0021227 |
 | 14 | 2026-11-22 | 3 | Name a player who played for the Broncos and the Chiefs | Amon Gordon | Broncos 2007 · Chiefs 2011 | default | 00-0022878 |
-| 14 | 2026-11-22 | 4 | Name a player who played for the Ravens and the Browns | Everett Lindsay | Ravens 1999 · Browns 2000 | default | 00-0009941 |
+| 14 | 2026-11-22 | 4 | Name a player who played for the Packers and the Lions | Ricky Jean Francois | Packers 2017 · Lions 2018 | default | 00-0026502 |
 | 14 | 2026-11-22 | 5 | Name an AFC QB from the 1980s | Bob Griese | Dolphins · 1980 | default | GRI037752 |
 | 14 | 2026-11-22 | 6 | Name a RB with a 60+ reception season | Duke Johnson | 74 rec · 2017 | default | 00-0032257 |
 | 14 | 2026-11-22 | 7 | Name an AP Defensive Rookie of the Year | Leslie O'Neal | Won 1986 | default | 00-0012274 |

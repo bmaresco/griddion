@@ -48,7 +48,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · Must have played a regular-season game for both*
 5. 🔥 **Name a QB from the 1970s**
    *1970–1979 seasons · QBs must have started a regular-season game*
-6. **Name a QB with a 3,500+ passing yard season**
+6. **Name a kicker with a 30+ field goal season**
    *Single season, 1999–2026 regular season*
 7. **Name an AP Offensive Rookie of the Year**
    *1967–2025 seasons*
@@ -76,7 +76,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (Baltimore & Indianapolis) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name a player who played for the Cardinals and the Rams**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player (RB/WR/TE) who played for the Steelers and the Browns**
+4. **Name a player who played for the Steelers and the Browns**
    *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an AFC WR from the 1990s**
    *1990–1999 seasons · Must have been on an active regular-season roster*
@@ -124,7 +124,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · QBs must have started a regular-season game*
 3. **Name a player who played for the Broncos and the Chargers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a skill player (RB/WR/TE) who played for the Colts and the Titans**
+4. **Name a player who played for the Colts and the Titans**
    *All seasons (franchise history) · Must have played a regular-season game for both*
 5. 🔥 **Name a QB from the 1980s**
    *1980–1989 seasons · QBs must have started a regular-season game*
@@ -144,7 +144,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an AFC RB from the 1970s**
    *1970–1979 seasons · Must have been on an active regular-season roster*
-6. **Name a QB with a 25+ passing TD season**
+6. **Name a TE with a 65+ reception season**
    *Single season, 1999–2026 regular season*
 7. **Name an AP Defensive Rookie of the Year**
    *1967–2025 seasons*
@@ -172,8 +172,8 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name a player who played for the Falcons and the Panthers**
    *1995–2026 seasons · Must have played a regular-season game for both*
-4. **Name a player who played for the Jaguars and the Texans**
-   *2002–2026 seasons · Must have played a regular-season game for both*
+4. **Name a player who played for the Giants and the Eagles**
+   *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an NFC WR from the 1980s**
    *1980–1989 seasons · Must have been on an active regular-season roster*
 6. **Name a RB with a 500+ receiving yard season**
@@ -220,8 +220,8 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2002–2026 seasons · Must have played in a regular-season game*
 3. **Name a player who played for the Broncos and the Chiefs**
    *All seasons (franchise history) · Must have played a regular-season game for both*
-4. **Name a player who played for the Ravens and the Browns**
-   *1996–2026 seasons · Must have played a regular-season game for both*
+4. **Name a player who played for the Packers and the Lions**
+   *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an AFC QB from the 1980s**
    *1980–1989 seasons · QBs must have started a regular-season game*
 6. **Name a RB with a 60+ reception season**
@@ -233,7 +233,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
 
 ## Revisions after the first probe (approved)
 - Launch-night replacements (Sleeper rule: ≥ 3 Sleeper Picks besides the YKB Kid): stat prompts on D3, D6–D13 replaced (D13 QB rushing stepped 300 → 200); two-team D7, D9, D11, D14 switched to any position; award slot is a 5-award cycle (MVP, DPOY, OROY, DROY, Comeback), OPOY dropped.
-- **Unresolved (drives not published):** D3.6 QB 3,500+ passing yds and D9.6 QB 25+ passing TDs fail the Sleeper rule even after 2 threshold steps.
+- Second launch-night round (after the team/opponent data fix): D3.6 → kicker 30+ field goals; D9.6 → TE 65+ receptions; D5.4 Steelers+Browns and D8.4 Colts+Titans → any position; D11.4 → Giants+Eagles; D14.4 → Packers+Lions. All pass with no steps or fallbacks.
 - Two-team prompts: same-position (RB or WR) versions all came in under 25. Changed to "skill player" (RB, WR or TE) where that reaches 25; the other 14 pairs are any position.
 - TE receiving yards 1,000 → 800 (18 → 50 answers). QB rushing yards 500 → 400 (22 → 38 answers).
 - Duplicates replaced: Day 13.3 (was Patriots+Jets, same as 1.4) → Bills+Patriots skill player; Day 10.3 (was Rams+Cardinals, same as 5.3) → Seahawks+Rams, any position (the skill-player version had 21).

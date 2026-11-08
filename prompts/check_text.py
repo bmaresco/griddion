@@ -12,7 +12,7 @@ TEAM = {"CLE": "Browns", "LV": "Raiders", "KC": "Chiefs", "NYJ": "Jets", "NE": "
 POS_WORD = {"QB": "QB", "RB": "RB", "WR": "WR", "TE": "TE", "LB": "LB", "DB": "DB", "K": "kicker"}
 STAT_WORD = {"receiving_yards": "receiving yard", "rushing_yards": "rushing yard", "passing_yards": "passing yard",
              "sacks": "sack", "interceptions": "interception", "receptions": "reception", "rushing_tds": "rushing TD",
-             "receiving_tds": "receiving TD", "passing_tds": "passing TD"}
+             "receiving_tds": "receiving TD", "passing_tds": "passing TD", "field_goals": "field goal"}
 AWARD_WORD = {"mvp": "MVP", "dpoy": "Defensive Player of the Year", "opoy": "Offensive Player of the Year",
               "oroy": "Offensive Rookie of the Year", "droy": "Defensive Rookie of the Year", "comeback": "Comeback Player"}
 

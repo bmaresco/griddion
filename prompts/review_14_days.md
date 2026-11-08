@@ -24,7 +24,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 3 | 3 | Name a skill player (RB/WR/TE) who played for the Bears and the Packers | 28 | 3 · 11 · 5 · 8 | tight |
 | 3 | 4 | Name a skill player (RB/WR/TE) who played for the Giants and Washington | 34 | 2 · 13 · 12 · 6 | — |
 | 3 | 5 | Name a QB from the 1970s | 140 | 15 · 49 · 40 · 35 | — |
-| 3 | 6 | Name a QB with a 3,500+ passing yard season | 82 | 9 · 47 · 25 · 0 | zero Sleepers |
+| 3 | 6 | Name a kicker with a 30+ field goal season | 74 | 2 · 20 · 41 · 10 | — |
 | 3 | 7 | Name an AP Offensive Rookie of the Year | 59 | 3 · 14 · 19 · 22 | — |
 | 4 | 1 | Name a Chiefs TE | 46 | 3 · 14 · 19 · 9 | — |
 | 4 | 2 | Name an NFC East QB | 73 | 18 · 25 · 23 · 6 | — |
@@ -36,7 +36,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 5 | 1 | Name a Lions QB | 80 | 9 · 17 · 20 · 33 | — |
 | 5 | 2 | Name a Colts WR | 169 | 8 · 44 · 63 · 53 | — |
 | 5 | 3 | Name a player who played for the Cardinals and the Rams | 104 | 5 · 26 · 43 · 29 | — |
-| 5 | 4 | Name a skill player (RB/WR/TE) who played for the Steelers and the Browns | 16 | 1 · 6 · 6 · 2 | tight |
+| 5 | 4 | Name a player who played for the Steelers and the Browns | 79 | 4 · 33 · 31 · 10 | — |
 | 5 | 5 | Name an AFC WR from the 1990s | 322 | 11 · 82 · 122 · 106 | — |
 | 5 | 6 | Name a DB with a 5+ interception season | 227 | 7 · 34 · 61 · 124 | — |
 | 5 | 7 | Name an AP Comeback Player of the Year | 27 | 3 · 9 · 11 · 3 | tight |
@@ -57,7 +57,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 8 | 1 | Name a Bengals WR | 74 | 9 · 33 · 19 · 12 | — |
 | 8 | 2 | Name an NFC South QB | 62 | 16 · 21 · 18 · 6 | — |
 | 8 | 3 | Name a player who played for the Broncos and the Chargers | 96 | 7 · 36 · 40 · 12 | — |
-| 8 | 4 | Name a skill player (RB/WR/TE) who played for the Colts and the Titans | 21 | 2 · 9 · 8 · 1 | tight |
+| 8 | 4 | Name a player who played for the Colts and the Titans | 94 | 4 · 34 · 41 · 14 | — |
 | 8 | 5 | Name a QB from the 1980s | 165 | 17 · 64 · 26 · 57 | — |
 | 8 | 6 | Name a WR with an 85+ reception season | 116 | 10 · 40 · 59 · 6 | — |
 | 8 | 7 | Name an AP Offensive Rookie of the Year | 59 | 3 · 14 · 19 · 22 | — |
@@ -66,7 +66,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 9 | 3 | Name a player who played for the Falcons and the Saints | 98 | 5 · 33 · 46 · 13 | — |
 | 9 | 4 | Name a player who played for the Lions and the Vikings | 89 | 8 · 32 · 39 · 9 | — |
 | 9 | 5 | Name an AFC RB from the 1970s | 305 | 9 · 63 · 108 · 124 | — |
-| 9 | 6 | Name a QB with a 25+ passing TD season | 68 | 9 · 46 · 12 · 0 | zero Sleepers; top-heavy (81% Starter+Backup) |
+| 9 | 6 | Name a TE with a 65+ reception season | 70 | 7 · 17 · 36 · 9 | — |
 | 9 | 7 | Name an AP Defensive Rookie of the Year | 60 | 4 · 11 · 21 · 23 | — |
 | 10 | 1 | Name an Eagles TE | 40 | 4 · 17 · 15 · 3 | — |
 | 10 | 2 | Name an AFC North RB | 234 | 21 · 87 · 101 · 24 | — |
@@ -78,7 +78,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 11 | 1 | Name a 49ers QB | 50 | 10 · 15 · 9 · 15 | — |
 | 11 | 2 | Name a Vikings WR | 155 | 12 · 41 · 62 · 39 | — |
 | 11 | 3 | Name a player who played for the Falcons and the Panthers | 69 | 2 · 24 · 34 · 8 | — |
-| 11 | 4 | Name a player who played for the Jaguars and the Texans | 59 | 3 · 27 · 27 · 1 | — |
+| 11 | 4 | Name a player who played for the Giants and the Eagles | 119 | 4 · 39 · 51 · 24 | — |
 | 11 | 5 | Name an NFC WR from the 1980s | 342 | 8 · 61 · 113 · 159 | — |
 | 11 | 6 | Name a RB with a 500+ receiving yard season | 71 | 5 · 25 · 27 · 13 | — |
 | 11 | 7 | Name an AP MVP | 51 | 6 · 23 · 18 · 3 | — |
@@ -99,7 +99,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 14 | 1 | Name a Bears QB | 90 | 9 · 28 · 22 · 30 | — |
 | 14 | 2 | Name an NFC West TE | 173 | 9 · 54 · 76 · 33 | — |
 | 14 | 3 | Name a player who played for the Broncos and the Chiefs | 72 | 4 · 29 · 23 · 15 | — |
-| 14 | 4 | Name a player who played for the Ravens and the Browns | 56 | 5 · 29 · 20 · 1 | — |
+| 14 | 4 | Name a player who played for the Packers and the Lions | 120 | 4 · 39 · 45 · 31 | — |
 | 14 | 5 | Name an AFC QB from the 1980s | 96 | 10 · 31 · 21 · 33 | — |
 | 14 | 6 | Name a RB with a 60+ reception season | 72 | 5 · 25 · 29 · 12 | — |
 | 14 | 7 | Name an AP Defensive Rookie of the Year | 60 | 4 · 11 · 21 · 23 | — |

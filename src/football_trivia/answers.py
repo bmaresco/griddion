@@ -41,7 +41,7 @@ STATS = {  # stat_threshold names -> raw_player_week expression
     "rushing_yards": "rushing_yards", "rushing_tds": "rushing_tds",
     "receiving_yards": "receiving_yards", "receiving_tds": "receiving_tds", "receptions": "receptions",
     "scrimmage_yards": "coalesce(rushing_yards,0) + coalesce(receiving_yards,0)",
-    "sacks": "def_sacks", "interceptions": "def_interceptions",
+    "sacks": "def_sacks", "interceptions": "def_interceptions", "field_goals": "fg_made",
 }
 
 

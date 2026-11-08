@@ -58,6 +58,11 @@ def stat_p(pos, stat_name, n, label):
     return (f"Name a {pos} with {article(n)} {n:,}+ {label} season", stat(stat_name, n, pos))
 
 
+def kicker_fg(n):
+    n = STAT_OVERRIDES.get(("K", "field_goals"), n)
+    return (f"Name a kicker with {article(n)} {n}+ field goal season", stat("field_goals", n, "K"))
+
+
 def award(a, lo):
     return ("trait", {"award": a, "season_min": lo, "season_max": 2025}, f"{lo}–2025 seasons")
 
@@ -81,7 +86,7 @@ DAYS = [
   ("Name a skill player (RB/WR/TE) who played for the Bears and the Packers", two("CHI", "GB", ["RB", "WR", "TE"])),
   ("Name a skill player (RB/WR/TE) who played for the Giants and Washington", two("NYG", "WAS", ["RB", "WR", "TE"])),
   ("Name a QB from the 1970s", era(1970, 1979, "QB")),
-  stat_p("QB", "passing_yards", 3500, "passing yard"),
+  kicker_fg(30),
   ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
  [("Name a Chiefs TE", team("KC", "TE", 2000, f"2000–2026 seasons · {G}")),
   ("Name an NFC East QB", div("NFC East", "QB")),
@@ -93,7 +98,7 @@ DAYS = [
  [("Name a Lions QB", team("DET", "QB", sub=f"{ALL} · {QB}")),
   ("Name a Colts WR", team("IND", "WR", sub=f"All seasons (Baltimore & Indianapolis) · {G99}")),
   ("Name a player who played for the Cardinals and the Rams", two("ARI", "LA", None)),
-  ("Name a skill player (RB/WR/TE) who played for the Steelers and the Browns", two("PIT", "CLE", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Steelers and the Browns", two("PIT", "CLE", None)),
   ("Name an AFC WR from the 1990s", era(1990, 1999, "WR", "AFC")),
   ("Name a DB with a 5+ interception season", stat("interceptions", 5, "DB")),
   ("Name an AP Defensive Rookie of the Year", award("droy", 1967))],
@@ -114,7 +119,7 @@ DAYS = [
  [("Name a Bengals WR", team("CIN", "WR", 2000, f"2000–2026 seasons · {G}")),
   ("Name an NFC South QB", div("NFC South", "QB")),
   ("Name a player who played for the Broncos and the Chargers", two("DEN", "LAC", None)),
-  ("Name a skill player (RB/WR/TE) who played for the Colts and the Titans", two("IND", "TEN", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Colts and the Titans", two("IND", "TEN", None)),
   ("Name a QB from the 1980s", era(1980, 1989, "QB")),
   stat_p("WR", "receptions", 85, "reception"),
   ("Name an AP Defensive Player of the Year", award("dpoy", 1971))],
@@ -123,7 +128,7 @@ DAYS = [
   ("Name a player who played for the Falcons and the Saints", two("ATL", "NO", None)),
   ("Name a player who played for the Lions and the Vikings", two("DET", "MIN", None)),
   ("Name an AFC RB from the 1970s", era(1970, 1979, "RB", "AFC")),
-  stat_p("QB", "passing_tds", 25, "passing TD"),
+  stat_p("TE", "receptions", 65, "reception"),
   ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
  [("Name an Eagles TE", team("PHI", "TE", 2000, f"2000–2026 seasons · {G}")),
   ("Name an AFC North RB", div("AFC North", "RB")),
@@ -135,7 +140,7 @@ DAYS = [
  [("Name a 49ers QB", team("SF", "QB", sub=f"{ALL} · {QB}")),
   ("Name a Vikings WR", team("MIN", "WR", sub=f"{ALL} · {G99}")),
   ("Name a player who played for the Falcons and the Panthers", two("ATL", "CAR", None, 1995)),
-  ("Name a player who played for the Jaguars and the Texans", two("JAX", "HOU", None, 2002)),
+  ("Name a player who played for the Giants and the Eagles", two("NYG", "PHI", None)),
   ("Name an NFC WR from the 1980s", era(1980, 1989, "WR", "NFC")),
   stat_p("RB", "receiving_yards", 500, "receiving yard"),
   ("Name an AP Defensive Rookie of the Year", award("droy", 1967))],
@@ -156,7 +161,7 @@ DAYS = [
  [("Name a Bears QB", team("CHI", "QB", sub=f"{ALL} · {QB}")),
   ("Name an NFC West TE", div("NFC West", "TE")),
   ("Name a player who played for the Broncos and the Chiefs", two("DEN", "KC", None)),
-  ("Name a player who played for the Ravens and the Browns", two("BAL", "CLE", None, 1996)),
+  ("Name a player who played for the Packers and the Lions", two("GB", "DET", None)),
   ("Name an AFC QB from the 1980s", era(1980, 1989, "QB", "AFC")),
   ("Name a RB with a 60+ reception season", stat("receptions", 60, "RB")),
   ("Name an AP Defensive Player of the Year", award("dpoy", 1971))],
