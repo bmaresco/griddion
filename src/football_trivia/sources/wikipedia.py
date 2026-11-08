@@ -115,7 +115,9 @@ def _years(line: str) -> list[int]:
 
 # (award key, required regex, forbidden regex). Lines are cleaned display text.
 AWARD_RULES = [
-    ("mvp", r"\b(NFL|AP)\b.*\b(Most Valuable Player|MVP)\b", r"Bowl|AFL|playoff|Championship Game"),
+    # AP MVP only: drop NFL Europe/World League, side-of-ball "MVPs", and other voting bodies
+    ("mvp", r"\b(NFL|AP)\b.*\b(Most Valuable Player|MVP)\b",
+     r"Bowl|AFL|playoff|Championship Game|Europ|World League|Offensive|Defensive|PFWA|UPI|Sporting News|Bert Bell|Newspaper"),
     ("afl_mvp", r"\bAFL\b.*\b(Most Valuable Player|MVP)\b", r"Bowl|All-Star"),
     ("opoy", r"\bNFL Offensive Player of the Year\b", r"Rookie"),
     ("dpoy", r"\bNFL Defensive Player of the Year\b", r"Rookie"),

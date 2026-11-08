@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from .db import DATA_DIR, write_table
+from .db import DATA_DIR, run, write_table
 from .names import norm_name
 from .sources.wikipedia import parse_highlights
 
@@ -139,7 +139,7 @@ def _seasons_games(con, log) -> None:
     write_table(con, "_roster_rows", r.select("player_id", "season", "team", "position", "depth_chart_position", "status"))
 
     fr = _franchise_sql
-    con.execute(f"""
+    run(con, f"""
     CREATE OR REPLACE TABLE player_seasons AS
     SELECT player_id, season, team AS team_code, {fr('team', 'season')} AS franchise,
            mode(position) AS position, mode(depth_chart_position) AS depth_chart_position,
@@ -150,7 +150,7 @@ def _seasons_games(con, log) -> None:
     """)
 
     # games actually played: any recorded stat (1999+), any snap (2012+), or QB start (1999+)
-    con.execute(f"""
+    run(con, f"""
     CREATE OR REPLACE TABLE qb_starts AS
     SELECT game_id, season, week, game_type, home_team AS team_code, {fr('home_team', 'season')} AS franchise,
            home_qb_id AS player_id
@@ -160,7 +160,7 @@ def _seasons_games(con, log) -> None:
     FROM raw_schedules WHERE away_qb_id IS NOT NULL AND away_score IS NOT NULL
     """)
 
-    con.execute(f"""
+    run(con, f"""
     CREATE OR REPLACE TABLE player_games AS
     WITH sched AS (SELECT game_id, season, week, game_type FROM raw_schedules),
     pfr_map AS (SELECT pfr_id, any_value(player_id) AS player_id FROM players WHERE pfr_id IS NOT NULL GROUP BY pfr_id HAVING count(*) = 1),
@@ -183,8 +183,8 @@ def _seasons_games(con, log) -> None:
     """)
     unmapped = con.execute("""
         SELECT count(DISTINCT pfr_player_id) FROM raw_snap_counts
-        WHERE pfr_player_id NOT IN (SELECT pfr_id FROM players WHERE pfr_id IS NOT NULL)""").fetchone()[0]
-    n = con.execute("SELECT count(*), count(DISTINCT player_id) FROM player_games").fetchone()
+        WHERE pfr_player_id NOT IN (SELECT pfr_id FROM players WHERE pfr_id IS NOT NULL)""").fetchall()[0][0]
+    n = con.execute("SELECT count(*), count(DISTINCT player_id) FROM player_games").fetchall()[0]
     log(f"  player_games: {n[0]} rows, {n[1]} players; {unmapped} snap-count PFR ids unmapped to a player")
 
 
@@ -204,7 +204,7 @@ def _honors(con, log) -> None:
         awards.extend({"player_id": pid, "award": k, "season": s} for k, s in h["awards"])
     write_table(con, "player_awards", pl.DataFrame(awards, schema={"player_id": pl.Utf8, "award": pl.Utf8, "season": pl.Int32}))
     write_table(con, "_honors", pl.DataFrame(rows))
-    con.execute("""
+    run(con, """
     CREATE OR REPLACE TABLE player_honors AS
     WITH pv AS (
         SELECT title, sum(views) AS pageviews, min(month) AS pv_first_month, count(*) AS pv_months
@@ -254,7 +254,7 @@ def _aliases(con, log) -> None:
 # ----------------------------------------------------------------- coverage
 
 def _coverage(con, log) -> None:
-    con.execute("""
+    run(con, """
     CREATE OR REPLACE TABLE coverage AS
     WITH ps AS (SELECT season, count(DISTINCT player_id) roster_players,
                        count(DISTINCT player_id) FILTER (WHERE NOT starts_with(player_id, 'nm:')) id_matched

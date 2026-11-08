@@ -19,9 +19,14 @@ def connect(path: str | os.PathLike | None = None, read_only: bool = False) -> d
     return duckdb.connect(str(path), read_only=read_only)
 
 
+def run(con: duckdb.DuckDBPyConnection, sql: str, params=None) -> None:
+    """Execute a statement and drain its result (DuckDB 2.x requires this before the next call)."""
+    con.execute(sql, params).fetchall()
+
+
 def write_table(con: duckdb.DuckDBPyConnection, name: str, df: pl.DataFrame) -> None:
     con.register("_df", df.to_arrow())
-    con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df")
+    run(con, f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df")
     con.unregister("_df")
 
 
@@ -29,5 +34,5 @@ def table_exists(con: duckdb.DuckDBPyConnection, name: str) -> bool:
     return bool(
         con.execute(
             "SELECT count(*) FROM information_schema.tables WHERE table_name = ?", [name]
-        ).fetchone()[0]
+        ).fetchall()[0][0]
     )

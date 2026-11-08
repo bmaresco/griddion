@@ -46,3 +46,15 @@ def test_donald():
 def test_no_false_positives():
     r = parse_highlights(ORTON)
     assert r == {"pro_bowls": 0, "all_pro_1st": 0, "all_pro_2nd": 0, "afl_all_star": 0, "awards": []}
+
+
+def test_mvp_excludes_non_ap_variants():
+    for line in [
+        "* NFL Europe Offensive MVP (2000)",
+        "* NFL Europe co-defensive MVP (2000)",
+        "* PFWA NFL Most Valuable Player (2003)",
+        "* [[Super Bowl Most Valuable Player Award|Super Bowl MVP]] (XXXIV)",
+        "* [[Pro Bowl]] MVP (2004)",
+    ]:
+        assert not any(k == "mvp" for k, _ in parse_highlights(line)["awards"]), line
+    assert ("mvp", 2003) in parse_highlights("* [[NFL Most Valuable Player|NFL co-MVP]] (2003)")["awards"]

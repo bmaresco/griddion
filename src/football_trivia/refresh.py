@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import os
 import time
 
 from . import build
-from .db import connect, table_exists
+from .db import connect, run, table_exists
 from .sources import nflverse, pageviews, wikidata, wikipedia
 
 STEPS = ["nflverse", "wikidata", "wikipedia", "pageviews", "build"]
@@ -26,9 +25,6 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--skip", nargs="+", choices=STEPS, default=[])
     args = ap.parse_args(argv)
     steps = [s for s in (args.only or STEPS) if s not in args.skip]
-
-    if {"wikidata", "wikipedia", "pageviews"} & set(steps) and "FT_CONTACT" not in os.environ:
-        print("warning: FT_CONTACT not set; Wikimedia asks for contact info in the User-Agent")
 
     t0 = time.time()
     log = lambda m: print(f"[{time.time() - t0:6.0f}s] {m}", flush=True)
@@ -46,12 +42,15 @@ def main(argv: list[str] | None = None) -> None:
         if "pageviews" in steps:
             pageviews.refresh(con, titles, log)
     if "build" in steps:
-        missing = [t for t in ("raw_wiki_pages", "raw_pageviews") if not table_exists(con, t)]
-        if missing:
-            raise SystemExit(f"build needs {missing}; run without --only first")
+        if not table_exists(con, "raw_wiki_pages"):
+            raise SystemExit("build needs raw_wiki_pages; run `refresh --only wikipedia` first")
+        pageviews._ensure_tables(con)
+        n_pv = con.execute("SELECT count(*) FROM raw_pageviews_fetched").fetchall()[0][0]
+        if n_pv == 0:
+            log("warning: no pageviews cached yet; fame inputs will be 0 until `refresh --only pageviews` runs")
         build.build(con, log)
-        con.execute("CREATE TABLE IF NOT EXISTS refresh_log (finished_at TIMESTAMP, steps VARCHAR)")
-        con.execute("INSERT INTO refresh_log VALUES (?, ?)", [dt.datetime.now(), ",".join(steps)])
+        run(con, "CREATE TABLE IF NOT EXISTS refresh_log (finished_at TIMESTAMP, steps VARCHAR)")
+        run(con, "INSERT INTO refresh_log VALUES (?, ?)", [dt.datetime.now(), ",".join(steps)])
         print_coverage(con)
     log("done")
 

@@ -6,7 +6,7 @@ Build order step 1: **`refresh`**, the local data cache. Everything downstream
 ## Run
 
 ```sh
-export FT_CONTACT="you@example.com"   # Wikimedia wants contact info in the User-Agent
+# Wikimedia throttles anonymous User-Agents; the repo URL is the default contact (override with FT_CONTACT)
 uv run refresh                         # full pull + derive (~first run: 20-40 min, mostly pageviews)
 uv run refresh --skip pageviews        # weekly in-season roster refresh
 uv run refresh --only build            # re-derive from cached raw tables, no network
@@ -46,7 +46,29 @@ use `ARZ/BLT/CLV/HST/SL` only for 2002–2015). `data/team_franchises.csv` maps
 `(code, season)` to the current franchise code. Defunct teams (AAFC, 1940s
 mergers) map to null. Prompts filter on `franchise`.
 
-## Coverage (answers spec §4 TODO)
+## Coverage findings (answers spec §4 TODO)
 
-See the "Coverage findings" section of the build notes below; regenerate with
-`uv run refresh --only build`.
+From the `coverage` table (regenerate with `uv run refresh --only build`):
+
+| Data | Available | Notes |
+|---|---|---|
+| Roster membership + listed position | 1920 → now | Season rosters; weekly rosters (mid-season moves) only 2002+ |
+| Stable player identity | ~1975 → now (≈100%) | Pre-1975: 25–90% matched via Wikidata name+DOB; rest get `nm:` ids |
+| QB starts | **1999 → now** | From schedules (`home_qb_id`/`away_qb_id`) |
+| Games played, players with a stat | **1999 → now** | Misses OL and anyone with zero recorded stats |
+| Games played, everyone (incl. OL) | **2013 → now** | Snap counts (nflverse has none for 2012) |
+| Non-QB starts | **not available** | nflverse has no starts for non-QBs |
+| Wikipedia article | ~95% of players since 1970 | |
+| Honors (Pro Bowl, All-Pro, awards, HOF) | all eras | Parsed from infobox highlights; AP MVP found for every season 1957–2025 except 1963 |
+
+**Implications for steps 2–3**
+
+* Validity (§3) can only be enforced for **1999+** (QB starts; games for players
+  with stats) and fully for **2013+** (all positions). Pre-1999 prompts can only
+  use roster membership, which includes players who never took a snap. Either
+  limit team/era prompts to 1999+ or accept roster membership with a flag.
+* Non-QB association must use **games** (unit rule, §7), since no starts exist.
+  The games-fallback comparison test only applies to QBs.
+* Award rule review: some infoboxes list non-AP versions of DPOY/DROY (e.g. 1982
+  Gastineau and Taylor), and Super Bowl titles are listed on players who never
+  appeared in the game. Decide whether trait prompts are AP-only.
