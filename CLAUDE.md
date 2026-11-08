@@ -143,6 +143,20 @@ Step 2 depends on this evidence. Step 1 must never return names only.
 ### Step 2: Rarity (`score_answers`)
 Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula in §7.
 
+**Answer bank export** (the output the game ships with): every answer carries its **tier** and a **context line** built from the Step 1 evidence:
+
+| Prompt type | Context line | Example |
+|---|---|---|
+| Team, QB | context starts · seasons | `102 starts · 2009–16` |
+| Team, other positions | context games · seasons | `158 games · 1974–84` |
+| Two-team | each team's span | `Raiders 2004–07 · Chiefs 2008` |
+| Era / conference / division | teams in context · seasons | `Colts, Bills · 1990–97` |
+| Stat | best qualifying season's stat · season | `1,871 yds · 2015` |
+| Award | season(s) won | `Won 2011` |
+
+- Seasons render as `2009–16` (single season `2008`).
+- Games aren't available before 1999 (all positions) or 1999–2012 for players with no recorded stat (§4). Where a stint's games are incomplete, the line falls back to seasons: `11 seasons · 1974–84`. Pre-1950 QBs (no starts) use the same fallback.
+
 ### Checks between steps
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
 - **Per-day check: average valid answers across a day's 7 prompts > 300 → warning only.** Keeps a day reviewable and aliasable without capping any single prompt. (Replaces the earlier per-prompt 300 warning.)
@@ -276,7 +290,37 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 
 ## 9. Version 1 scope
 
-**In:** daily set of prompts, same for everyone; timer per prompt; fuzzy matching with alias support; scoring and tiers; post-game reveal; streaks in local storage; share card; ~14 days of prompts queued at launch.
+**In:** daily set of prompts, same for everyone; timer per prompt; fuzzy matching with alias support; scoring and tiers; All Answers screen; pick stats; share; streaks and W–L record in local storage; anonymous answer logging; ~14 days of prompts queued at launch.
+
+**All Answers screen**
+- Unlocks after the 7th play. Tabs **P1–P7**, one per prompt.
+- Scrollable list per prompt, sortable by **tier** or **A–Z**, with **search** (alias-aware, using the same matcher as answer entry).
+- **Your pick** and the **YKB Kid** are pinned at the top.
+- Each row shows the player's name, the **context line** (§6 answer bank export), and **pick stats**.
+
+**Pick stats** (from anonymous answer logging)
+- Fewer than 100 logged answers for the prompt: show share of players (`14% of players`, `Under 1% of players`).
+- 100 or more: show raw counts (`291 players`).
+
+**Share**
+- `navigator.share()` on mobile; elsewhere copy to clipboard and show "Copied!".
+- Text format:
+  ```
+  Gridion Drive #<n> 🏈
+  TOUCHDOWN · W 24–21 · 375 pts        (or: STALLED at OPP 24 · L 17–21 · 255 pts)
+  <7 tier squares>
+  gridion.io
+  ```
+- Tier squares, one per prompt in order: ⬜ Starter · 🟦 Backup · 🟩 Hidden Gem · 🟪 Sleeper Pick · 🟨 YKB Kid · 🟧 Botched Trick Play · ⬛ Incomplete.
+
+**Drive, streak, record**
+- **Drive #** = days since launch, the same for everyone.
+- **Streak** = consecutive days played. A separate **W–L record**. Both in local storage.
+
+**Anonymous answer logging**
+- For every submitted answer, record **prompt id**, **matched player id** (or `invalid`), and **tier**. Nothing else: no accounts, no personal data, no device or user identifiers.
+- Used for pick stats and for tuning the formula after launch (§1, §7).
+- Hosting: proposed in §11, not built yet.
 
 **Out (later):** accounts, unlimited mode, archive, leaderboards, themed packs.
 
@@ -299,3 +343,5 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - ~~Game title~~ — **resolved:** Gridion (gridion.io)
+- **Drive outcome and score mapping (needed for Share):** how the 7 picks become `TOUCHDOWN` / `STALLED at OPP 24`, the `W 24–21` / `L 17–21` scoreline, and the W–L result isn't defined yet. Points (375, 255) come from tier points (§2).
+- **Answer-logging hosting (proposal):** host the static game on **Cloudflare Pages** at gridion.io and log answers to a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`. `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable for a minute or so). Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy. Add per-IP rate limiting at the Worker to keep junk out, and don't store IPs. Fallback if we'd rather not use Cloudflare: Supabase (Postgres + an insert-only policy).
