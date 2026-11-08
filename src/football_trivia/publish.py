@@ -32,6 +32,7 @@ SCHEDULE = ROOT / "prompts" / "schedule.json"
 QUEUE = ROOT / "prompts" / "prompts_14_days.jsonl"
 REPORTS = ROOT / "reports"
 MIN_SLEEPERS = 3  # §6: a prompt ships only with at least 3 Sleeper Picks besides the YKB Kid
+YKB_WINDOW = 14   # §2: a player is YKB Kid at most once in any 14-day window
 
 # §2 points, §9 yards (= points / 5) and share squares
 TIER_INFO = {
@@ -167,17 +168,20 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
 
 # ------------------------------------------------------------------- export
 
-def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, list[str]]:
+def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame,
+                  ykb_exclude: set[str] | None = None) -> tuple[dict, list[str]]:
     """One prompt's answer bank in the §6 export format, plus publish warnings."""
     p = Prompt.from_json(obj)
     r = build_answers(con, p)
-    scored, info = score_answers(con, r, f_df)
+    scored, info = score_answers(con, r, f_df, ykb_exclude)
     warnings = list(r.warnings)
     if r.n < MIN_ANSWERS:
         warnings.append(f"HARD STOP: {r.n} answers")
     ykb = info.get("ykb_kid")
     if p.ykb_kid and p.ykb_kid not in scored["player_id"].to_list():
         warnings.append(f"ykb_kid override {p.ykb_kid} is not a valid answer")
+    if p.ykb_kid and ykb_exclude and p.ykb_kid in ykb_exclude:
+        warnings.append(f"ykb_kid override {p.ykb_kid} was already YKB Kid in the last {YKB_WINDOW} days")
     if not ykb:
         warnings.append("no YKB Kid (no Sleeper Pick or Hidden Gem)")
     n_sleepers = int((scored["tier"] == "Sleeper Pick").sum())  # YKB Kid already re-tiered
@@ -208,10 +212,29 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, 
     }, warnings
 
 
-def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame) -> tuple[dict, dict[str, list[str]]]:
+def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame):
+    """Yield (drive, data, warnings) for every scheduled drive in order. YKB Kids are chosen
+    with the §2 window rule, so earlier drives are always built first."""
+    hist: dict[int, list[str]] = {}
+    for d in sched["drives"]:
+        data, warns, picks = build_drive(con, d, prompts, f_df, window_exclude(hist, d["drive"]))
+        hist[d["drive"]] = picks
+        yield d, data, warns
+
+
+def window_exclude(hist: dict[int, list[str]], drive: int) -> set[str]:
+    return {pid for n, picks in hist.items() if drive - YKB_WINDOW < n < drive for pid in picks}
+
+
+def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame,
+                ykb_exclude: set[str] | None = None) -> tuple[dict, dict[str, list[str]], list[str]]:
+    """-> (drive file, warnings per prompt, YKB Kid ids)."""
     out, warns = [], {}
+    used = set(ykb_exclude or set())
     for slot, pid in enumerate(drive["prompt_ids"], 1):
-        e, w = export_prompt(con, prompts[pid], slot, f_df)
+        e, w = export_prompt(con, prompts[pid], slot, f_df, used)
+        if e["ykb_kid"]:
+            used.add(e["ykb_kid"])  # also unique within the drive
         out.append(e)
         if w:
             warns[pid] = w
@@ -223,7 +246,7 @@ def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame) 
         "data_version": data_version.isoformat() if data_version else None,
         "thresholds_frozen_at": (load_thresholds() or {}).get("frozen_at"),
         "prompts": out,
-    }, warns
+    }, warns, [e["ykb_kid"] for e in out if e["ykb_kid"]]
 
 
 def write_static(con) -> None:
@@ -254,10 +277,9 @@ def cmd_build(drive_filter: int | None, force: bool) -> None:
     (DIST / "days").mkdir(parents=True, exist_ok=True)
     write_static(con)
     index, stops = [], []
-    for d in sched["drives"]:
+    for d, data, warns in built_drives(con, sched, prompts, f_df):
         if drive_filter and d["drive"] != drive_filter:
             continue
-        data, warns = build_drive(con, d, prompts, f_df)
         hard = {k: w for k, w in warns.items() if any(x.startswith("HARD STOP") for x in w)}
         if hard and not force:
             stops.append((d["drive"], hard))
@@ -289,12 +311,11 @@ def cmd_diff(out: Path | None) -> None:
              "Current build vs last published `public/`. Upcoming drives only. "
              f"Tight = within {TIGHT_MARGIN} of the {MIN_ANSWERS}-answer minimum.", ""]
     flags = []
-    for d in sched["drives"]:
+    for d, new, warns in built_drives(con, sched, prompts, f_df):
         if dt.date.fromisoformat(d["date"]) < today:
             continue
         old_path = DIST / "days" / f"{d['drive']}.json"
         old = {p["id"]: p for p in json.loads(old_path.read_text())["prompts"]} if old_path.exists() else {}
-        new, warns = build_drive(con, d, prompts, f_df)
         lines.append(f"## Drive {d['drive']} — {d['date']}" + ("" if old else " (not published yet)"))
         for p in new["prompts"]:
             n = p["answer_count"]

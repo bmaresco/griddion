@@ -29,7 +29,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Botched Trick Play | 15 | Optional; the famous "obscure" pick everyone reaches for. Used sparingly |
 | Invalid / no answer | 0 | |
 
-- **YKB Kid**: one per prompt. **Default: the highest-fame (F) Sleeper Pick; if the prompt has no Sleeper Pick, the highest-fame Hidden Gem.** A prompt can override it with `"ykb_kid": "<player_id>"`. `prompts/ykb_review.md` lists every prompt's pick and context line for a quick skim (`uv run python prompts/ykb_review.py`).
+- **YKB Kid**: one per prompt. **Default: the highest-fame (F) Sleeper Pick; if the prompt has no Sleeper Pick, the highest-fame Hidden Gem.** **A player can be YKB Kid at most once in any 14-day window:** if the default pick was already YKB Kid in the previous 13 drives (or earlier in the same drive), take the next-highest-fame eligible pick, in drive order. A prompt can override it with `"ykb_kid": "<player_id>"` (publish warns if the override repeats within the window). `prompts/ykb_review.md` lists every prompt's pick and context line for a quick skim (`uv run python prompts/ykb_review.py`).
 - **Botched Trick Play** is a **manual option only**: never assigned or suggested by the pipeline. It's used on a handful of prompts at most, and only when explicitly added to a prompt (`"botched_trick_play": "<player_id>"`), which overrides that one answer's tier. **No prompt uses it at launch.** (An automatic suggestion — most famous answer with F ≥ 0.58 and A ≤ 0.35 — was tried on the 14-day draft and all 32 suggestions were rejected.)
 
 ---

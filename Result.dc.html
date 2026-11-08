@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Griddion answer result</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&amp;family=Silkscreen:wght@400;700&amp;family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#c8352f}a:hover{color:#8e2330}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes push{0%,100%{transform:translateX(0)}50%{transform:translateX(2px)}}
+@keyframes pushback{0%,100%{transform:translateX(0)}50%{transform:translateX(-2px)}}
+@keyframes drop{0%,10%{transform:translateX(0)}35%,100%{transform:translateX(-8px)}}
+@keyframes route{0%,10%{transform:translate(0,0)}80%,100%{transform:translate(59px,40px)}}
+@keyframes bomb{0%,30%{transform:translate(0,0)}55%{transform:translate(44px,-58px)}80%,100%{transform:translate(89px,-2px)}}
+@keyframes chase{0%,10%{transform:translate(0,0)}80%,100%{transform:translate(20px,46px)}}
+@keyframes converge{0%,20%{transform:translate(0,0)}80%,100%{transform:translate(5px,20px)}}
+@keyframes flash{0%,90%{opacity:0}93%{opacity:1}96%,100%{opacity:0}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0.3}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #160f33; color: #1d1a14; font-family: 'Courier Prime', monospace; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+
+<div style="position: relative; height: 266px; flex: none; background: #0f0b26; overflow: hidden">
+<sc-for list="{{decor}}" as="d" hint-placeholder-count="30"><div aria-hidden="true" style="{{d.style}}"></div></sc-for>
+<div aria-hidden="true" style="position: absolute; left: 96px; top: 240px; width: 8px; height: 26px; background: #2b2b33"></div>
+<div aria-hidden="true" style="position: absolute; left: 286px; top: 240px; width: 8px; height: 26px; background: #2b2b33"></div>
+<div style="position: absolute; left: 40px; top: 12px; width: 310px; box-sizing: border-box; background: #2b2b33; border: 3px solid #0a0a10; padding: 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="height: 26px; background: #c8352f; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; color: #f3ead7">
+<span style="font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px; letter-spacing: 2px">GRIDDION</span>
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px">STREAK 4 · 3W 1L</span>
+</div>
+<div style="height: 160px; box-sizing: border-box; background-color: #050505; background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.3px); background-size: 3px 3px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 6px; font-family: 'DotGothic16', monospace">
+<span style="font-size: 16px; line-height: 1; color: #c98a2e">PLAY 3 · NAME A BEARS QB</span>
+<h1 style="margin: 0; font-weight: 400; font-size: 32px; line-height: 1; color: #c89bff; animation: blink 0.8s steps(1,end) infinite">SLEEPER PICK!</h1>
+<p style="margin: 0; font-size: 32px; line-height: 1; color: #ffb43a">CRAIG KRENZEL</p>
+<div style="flex: 1 1 auto"></div>
+<p style="margin: 0; font-size: 16px; line-height: 1.1; color: #ffb43a">DEEP BOMB · +17 YDS · +85 PTS</p>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px; color: #f3ead7">
+<span>BALL · OPP 44</span>
+<span>PTS · 155</span>
+</div>
+</div>
+</div>
+
+<div role="img" aria-label="Pixel football field. Eleven against eleven: the quarterback drops back and throws deep from your own 39, and the receiver runs under it at the opponent's 44." style="position: relative; width: 360px; height: 200px; overflow: hidden; border: 3px solid #0a0820; flex: none; align-self: center">
+<sc-for list="{{f.bg}}" as="b" hint-placeholder-count="16"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.lines}}" as="b" hint-placeholder-count="20"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.nums}}" as="n" hint-placeholder-count="9"><div style="{{n.style}}">{{n.label}}</div></sc-for>
+<sc-for list="{{f.under}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.sprites}}" as="s" hint-placeholder-count="40"><div style="{{s.style}}"></div></sc-for>
+<sc-for list="{{f.over}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}"></div></sc-for>
+</div>
+
+<div style="margin: 0 12px; background: #1d1d22; border: 3px solid #0a0a10; padding: 6px">
+<div style="border: 2px dashed #55555f; padding: 6px">
+<div style="background: #efe6cf; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-family: 'Silkscreen', monospace; font-size: 16px; font-weight: 700">QB WRISTBAND</span>
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12px; color: #6b6253">DRIVE #12</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 2px solid #1d1a14">
+<sc-for list="{{log}}" as="q" hint-placeholder-count="7">
+<div style="{{q.style}}">
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 11px; color: #6b6253">{{q.n}}</span>
+<span style="{{q.mid}}">{{q.label}}</span>
+<span style="{{q.bar}}"></span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px; align-items: flex-start">
+<span style="flex: none; width: 14px; height: 14px; margin-top: 3px; background: #7b3fc4; border: 2px solid #1d1a14"></span>
+<p style="margin: 0; font-size: 17px; line-height: 1.25">Krenzel started 5 games for Chicago in 2004. Deep pull. Deep throw.</p>
+</div>
+<div style="flex: 1 1 auto; min-height: 4px"></div>
+<button type="button" style="height: 52px; background: #c8352f; color: #f3ead7; border: 3px solid #1d1a14; box-shadow: 3px 3px 0 0 #1d1a14; font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px; cursor: pointer">NEXT PLAY</button>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  tiers() {
+    return {
+      starter: { name: 'Starter', play: 'run', yd: 2, c: '#7a8191' },
+      trick: { name: 'Trick Play', play: 'reverse', yd: 3, c: '#d4661c' },
+      backup: { name: 'Backup', play: 'slant', yd: 6, c: '#1f6fd1' },
+      gem: { name: 'Hidden Gem', play: 'deep out', yd: 12, c: '#198a4a' },
+      sleeper: { name: 'Sleeper Pick', play: 'bomb', yd: 17, c: '#7b3fc4' },
+      ykb: { name: 'YKB Kid', play: 'hail mary', yd: 20, c: '#e0a800' }
+    };
+  }
+  px(map, pal, x, y, p, anim) {
+    var sh = [];
+    for (var r = 0; r < map.length; r++) {
+      for (var c = 0; c < map[r].length; c++) {
+        var k = map[r].charAt(c);
+        if (k !== '.' && pal[k]) sh.push(((c + 1) * p) + 'px ' + ((r + 1) * p) + 'px 0 0 ' + pal[k]);
+      }
+    }
+    return { y: y, style: 'position:absolute;left:' + (x - p) + 'px;top:' + (y - p) + 'px;width:' + p + 'px;height:' + p + 'px;box-shadow:' + sh.join(',') + (anim ? ';' + anim : '') };
+  }
+  box(x, y, w, h, bg, extra) {
+    return { style: 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + bg + (extra ? ';' + extra : '') };
+  }
+  crowd(y0, y1, near) {
+    var pal = near
+      ? ['#2f5bd3', '#f4f4ee', '#2f5bd3', '#d9a27a', '#1d3b8f', '#c8352f', '#2f5bd3', '#6b4429', '#f1c9a5', '#ffd23f']
+      : ['#23317a', '#77779a', '#23317a', '#7a5a45', '#1a2558', '#7a2420', '#23317a', '#3e2a1c'];
+    var out = [], r = 0;
+    for (var y = y0; y <= y1; y += 6, r++) {
+      var x0 = 1 + (r % 2) * 2, first = null, sh = [];
+      for (var x = x0, c = 0; x < 388; x += 5, c++) {
+        var col = pal[(r * 31 + c * 17 + (c * c) % 7) % pal.length];
+        if (first === null) { first = col; continue; }
+        sh.push((x - x0) + 'px 0 0 0 ' + col);
+      }
+      out.push({ style: 'position:absolute;left:' + x0 + 'px;top:' + y + 'px;width:3px;height:4px;background:' + first + ';box-shadow:' + sh.join(',') });
+    }
+    return out;
+  }
+  stadium() {
+    var d = [];
+    for (var s = 0; s < 16; s++) d.push(this.box((s * 97 + 23) % 380 + 5, 4 + (s * 41) % 88, 2, 2, '#8f8ac2'));
+    d.push(this.box(0, 96, 390, 170, '#211a45'));
+    d = d.concat(this.crowd(100, 166, false), this.crowd(172, 262, true));
+    for (var i = 0; i < 18; i++) d.push(this.box((i * 67 + 11) % 380 + 4, 104 + (i * 29) % 150, 3, 3, '#ffffff', 'opacity:0;animation:flash 2.2s steps(1,end) infinite;animation-delay:-' + (i * 0.29).toFixed(2) + 's'));
+    var self = this;
+    [6, 360].forEach(function (hx) {
+      d.push(self.box(hx + 10, 30, 4, 120, '#3a3550'));
+      d.push(self.box(hx, 14, 24, 18, '#4a4466'));
+      for (var a = 0; a < 3; a++) for (var b = 0; b < 2; b++) d.push(self.box(hx + 3 + a * 7, 17 + b * 7, 5, 5, '#fff6c8'));
+    });
+    return d;
+  }
+  field(o) {
+    var self = this, F = 40;
+    var X = function (yd) { return 30 + 3 * yd; };
+    var HOME = { T: '#2f5bd3', J: '#2f5bd3', W: '#f4f4ee', P: '#e9e3cf', K: '#141414', G: '#c9ced6' };
+    var AWAY = { T: '#c8352f', J: '#c8352f', W: '#f4f4ee', P: '#f4f4ee', K: '#141414', G: '#c9ced6' };
+    var PR = ['.TTT.', 'TTTGG', '.TTT.', 'JJJJJ', 'JJWJJ', '.JJJ.', '.PPP.', '.P.P.', '.K.K.'];
+    var PL = ['.TTT.', 'GGTTT', '.TTT.', 'JJJJJ', 'JJWJJ', '.JJJ.', '.PPP.', '.P.P.', '.K.K.'];
+    var COACH = ['.CCC.', 'CCCCC', '.SSS.', 'QQQQQ', 'QQQQQ', '.QQQ.', '.BBB.', '.B.B.', '.K.K.'];
+    var REF = ['.WWW.', '.SSS.', '.SSS.', 'WKWKW', 'WKWKW', '.WKW.', '.KKK.', '.K.K.', '.K.K.'];
+    var CREW = ['.OOO.', '.SSS.', '.SSS.', 'OOOOO', 'OOOOO', '.OOO.', '.KKK.', '.K.K.', '.K.K.'];
+    var BALL = ['.BBBB.', 'BWWWWB', '.BBBB.'];
+    var skins = ['#f1c9a5', '#d9a27a', '#a8714a', '#6b4429'];
+    var cp = function (i, q) { return { C: q, S: skins[i % 4], Q: q, B: '#c8b48a', K: '#141414' }; };
+    var idle = function (k, dur) { return 'animation:idle ' + (dur || 1.2) + 's steps(1,end) infinite;animation-delay:-' + ((k % 5) * 0.23).toFixed(2) + 's'; };
+    var play = function (name, steps) { return 'animation:' + name + ' 2.4s steps(' + (steps || 12) + ',end) infinite'; };
+    var bg = [], lines = [], nums = [], under = [], sp = [], over = [];
+    bg.push(this.box(0, 0, 360, F, '#2c6e33'));
+    bg.push(this.box(0, F + 120, 360, 40, '#2c6e33'));
+    for (var i = 0; i < 12; i++) {
+      var col = i === 0 ? '#22408f' : (i === 11 ? '#8e2330' : (i % 2 ? '#3f9a45' : '#378a3d'));
+      bg.push(this.box(30 * i, F, 30, 120, col));
+    }
+    bg.push(this.box(0, F - 2, 360, 2, '#f4f4ee'));
+    bg.push(this.box(0, F + 120, 360, 2, '#f4f4ee'));
+    for (var a = 0; a <= 10; a++) lines.push(this.box(X(10 * a) - 1, F, 2, 120, '#f4f4ee'));
+    for (var b = 0; b < 10; b++) lines.push(this.box(X(10 * b + 5), F, 1, 120, 'rgba(244,244,238,0.45)'));
+    for (var h = 1; h < 100; h++) {
+      if (h % 5) {
+        lines.push(this.box(X(h), F + 44, 1, 4, 'rgba(244,244,238,0.6)'));
+        lines.push(this.box(X(h), F + 72, 1, 4, 'rgba(244,244,238,0.6)'));
+      }
+    }
+    [10, 20, 30, 40, 50, 60, 70, 80, 90].forEach(function (yd) {
+      nums.push({ label: String(yd <= 50 ? yd : 100 - yd), style: 'position:absolute;left:' + (X(yd) - 10) + 'px;top:' + (F + 104) + 'px;width:20px;text-align:center;font-family:\'Silkscreen\',monospace;font-size:8px;color:rgba(244,244,238,0.85)' });
+    });
+    var L = X(o.los), FD = X(o.fd), B0 = F + 122;
+    var top = [];
+    for (var k = 0; k < 24; k++) top.push({ x: 86 + k * 9 + ((k * 37) % 7) - 3, y: 3 + ((k * 53) % 14), t: 'p', k: k });
+    top.push({ x: 40, y: 10, t: 'p', k: 3 }, { x: 322, y: 7, t: 'p', k: 1 });
+    top.push({ x: 166, y: 20, t: 'c', k: 0 }, { x: 196, y: 19, t: 'c', k: 2 });
+    top.sort(function (m, n) { return m.y - n.y; });
+    top.forEach(function (m) { sp.push(m.t === 'c' ? self.px(COACH, cp(m.k, '#1d3b8f'), m.x, m.y, 2, idle(m.k, 1.6)) : self.px(PR, HOME, m.x, m.y, 2, idle(m.k))); });
+    var bot = [];
+    for (var j = 0; j < 22; j++) {
+      var bx = 78 + j * 9 + ((j * 29) % 7) - 3, by = B0 + 3 + ((j * 41) % 15);
+      var blocked = o.chains && by < B0 + 12 && (Math.abs(bx - L) < 12 || Math.abs(bx - FD) < 12);
+      if (!blocked) bot.push({ x: bx, y: by, t: 'p', k: j });
+    }
+    bot.push({ x: 300, y: B0 + 6, t: 'p', k: 2 }, { x: 150, y: B0 + 20, t: 'c', k: 1 }, { x: 178, y: B0 + 20, t: 'c', k: 3 });
+    bot.sort(function (m, n) { return m.y - n.y; });
+    bot.forEach(function (m) { sp.push(m.t === 'c' ? self.px(COACH, cp(m.k, '#7a1b17'), m.x, m.y, 2, idle(m.k, 1.6)) : self.px(PL, AWAY, m.x, m.y, 2, idle(m.k))); });
+    if (o.chains) {
+      sp.push(this.box(L, B0 + 3, FD - L, 1, '#d7dbe2'));
+      sp.push(this.box(L - 1, B0, 2, 14, '#ff7a1a'));
+      sp.push(this.box(FD - 1, B0, 2, 14, '#ff7a1a'));
+      sp.push(this.px(CREW, { O: '#ff7a1a', S: skins[1], K: '#141414' }, L + 3, B0 + 2, 2));
+      sp.push(this.px(CREW, { O: '#ff7a1a', S: skins[3], K: '#141414' }, FD + 3, B0 + 2, 2));
+    }
+    if (o.deep) {
+      var Z = X(o.deep);
+      for (var d = 0; d < 120; d += 8) under.push(this.box(L - 1, F + d, 2, 4, 'rgba(74,163,255,0.8)'));
+      for (var s = 1; s < 16; s++) {
+        var t2 = s / 16, tx = Math.round((L - 40) + (Z - L + 40) * t2), ty = Math.round(F + 56 - 220 * t2 * (1 - t2));
+        under.push(this.box(tx - 1, Math.max(F + 2, ty) - 1, 2, 2, 'rgba(255,210,63,0.55)'));
+      }
+      var onField = [];
+      [29, 40, 51, 62, 73].forEach(function (t, n) { onField.push({ m: PR, p: HOME, x: L - 12, y: F + t, a: 'animation:push 0.5s steps(1,end) infinite;animation-delay:-' + (n * 0.1).toFixed(1) + 's' }); });
+      onField.push({ m: PR, p: HOME, x: L - 12, y: F + 84, a: 'animation:push 0.5s steps(1,end) infinite' });
+      onField.push({ m: PR, p: HOME, x: L - 34, y: F + 51, a: play('drop', 4) });
+      onField.push({ m: PR, p: HOME, x: L - 36, y: F + 66, a: 'animation:push 0.6s steps(1,end) infinite' });
+      onField.push({ m: PR, p: HOME, x: L - 12, y: F + 4, a: play('route') });
+      onField.push({ m: PR, p: HOME, x: L - 20, y: F + 16, a: play('chase', 10) });
+      onField.push({ m: PR, p: HOME, x: L - 12, y: F + 100, a: play('converge', 10) });
+      [33, 45, 57, 69].forEach(function (t, n) { onField.push({ m: PL, p: AWAY, x: L + 3, y: F + t, a: 'animation:pushback 0.5s steps(1,end) infinite;animation-delay:-' + (n * 0.12).toFixed(2) + 's' }); });
+      [24, 51, 80].forEach(function (t, n) { onField.push({ m: PL, p: AWAY, x: L + 22, y: F + t, a: idle(n, 0.7) }); });
+      onField.push({ m: PL, p: AWAY, x: L + 5, y: F + 4, a: play('chase', 12) });
+      onField.push({ m: PL, p: AWAY, x: L + 5, y: F + 100, a: idle(2, 0.7) });
+      onField.push({ m: PL, p: AWAY, x: L + 56, y: F + 28, a: play('converge', 12) });
+      onField.push({ m: PL, p: AWAY, x: L + 56, y: F + 76, a: idle(4, 0.8) });
+      onField.push({ m: REF, p: { W: '#f4f4ee', K: '#141414', S: skins[2] }, x: L + 84, y: F + 51, a: '' });
+      onField.sort(function (m, n) { return m.y - n.y; });
+      onField.forEach(function (q) { sp.push(self.px(q.m, q.p, q.x, q.y, 2, q.a)); });
+      over.push(this.px(BALL, { B: '#8a4f22', W: '#f4f4ee' }, L - 40, F + 52, 2, play('bomb', 16)));
+    }
+    return { bg: bg, lines: lines, nums: nums, under: under, sprites: sp, over: over };
+  }
+  log(keys, current) {
+    var T = this.tiers(), out = [];
+    for (var i = 0; i < 7; i++) {
+      var k = keys[i];
+      var base = 'height:54px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding-top:4px;' + (i < 6 ? 'border-right:2px solid #1d1a14;' : '');
+      if (k) {
+        var t = T[k];
+        out.push({ n: 'P' + (i + 1), label: '+' + t.yd, style: base + (i === current ? 'background:#ffe27a;' : ''), mid: 'font-weight:700;font-size:20px;line-height:1;color:#1d1a14', bar: 'align-self:stretch;height:7px;background:' + t.c });
+      } else {
+        out.push({ n: 'P' + (i + 1), label: '', style: base, mid: 'font-size:20px;line-height:1', bar: 'align-self:stretch;height:7px;background:transparent' });
+      }
+    }
+    return out;
+  }
+  renderVals() {
+    return {
+      decor: this.stadium(),
+      f: this.field({ los: 39, fd: 49, chains: true, deep: 56 }),
+      log: this.log(['starter', 'gem', 'sleeper'], 2)
+    };
+  }
+}
+</script>
+</body>
+</html>

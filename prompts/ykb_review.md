@@ -1,6 +1,6 @@
 # YKB Kid review
 
-Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override with `"ykb_kid": "<player_id>"`.
+Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem, skipping anyone who was YKB Kid in the previous 13 drives. Override with `"ykb_kid": "<player_id>"`.
 
 | Drive | Date | # | Prompt | YKB Kid | Context | Source | Player id |
 |---|---|---|---|---|---|---|---|
@@ -45,60 +45,60 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem. Override
 | 6 | 2026-11-14 | 4 | Name a player who played for the Vikings and the Packers | Frank Walker | Vikings 2010 · Packers 2007 | default | 00-0021943 |
 | 6 | 2026-11-14 | 5 | Name a QB from the 1960s | Roger Staubach | Cowboys · 1969 | default | STA762496 |
 | 6 | 2026-11-14 | 6 | Name a TE with a 700+ receiving yard season | Jermaine Wiggins | 705 yds · 2004 | default | 00-0017644 |
-| 6 | 2026-11-14 | 7 | Name an AP MVP | Y.A. Tittle | Won 1963 | default | pfr:TittY.00 |
+| 6 | 2026-11-14 | 7 | Name an AP MVP | Bert Jones | Won 1976 | default | JON086372 |
 | 7 | 2026-11-15 | 1 | Name a Washington QB | Rich Gannon | 4 starts · 1993 | default | 00-0005741 |
 | 7 | 2026-11-15 | 2 | Name a Patriots RB | Fred McCrary | 4 games · 2003 | default | 00-0010747 |
 | 7 | 2026-11-15 | 3 | Name a player who played for the Seahawks and the 49ers | Al Matthews | Seahawks 1976 · 49ers 1977 | default | MAT501472 |
 | 7 | 2026-11-15 | 4 | Name a player who played for the Chargers and the Chiefs | Mike Mercer | Chargers 1970 · Chiefs 1966 | default | pfr:MercMi20 |
 | 7 | 2026-11-15 | 5 | Name an AFC TE from the 1980s | Trey Junkin | Bills, Raiders · 1983–89 | default | 00-0008961 |
 | 7 | 2026-11-15 | 6 | Name a RB with a 10+ rushing TD season | Rashard Mendenhall | 13 TD · 2010 | default | 00-0026163 |
-| 7 | 2026-11-15 | 7 | Name an AP Defensive Player of the Year | Bob Sanders | Won 2007 | default | 00-0022944 |
+| 7 | 2026-11-15 | 7 | Name an AP Defensive Player of the Year | Bryce Paup | Won 1995 | default | 00-0012679 |
 | 8 | 2026-11-16 | 1 | Name a Bengals WR | Cliff Russell | 13 games · 2004 | default | 00-0021212 |
 | 8 | 2026-11-16 | 2 | Name an NFC South QB | Tua Tagovailoa | Falcons · 2026 | default | 00-0036212 |
 | 8 | 2026-11-16 | 3 | Name a player who played for the Broncos and the Chargers | Dante Rosario | Broncos 2011 · Chargers 2012 | default | 00-0025542 |
 | 8 | 2026-11-16 | 4 | Name a player who played for the Colts and the Titans | Caraun Reid | Colts 2017 · Titans 2021 | default | 00-0031071 |
 | 8 | 2026-11-16 | 5 | Name a QB from the 1980s | Bob Griese | Dolphins · 1980 | default | GRI037752 |
-| 8 | 2026-11-16 | 6 | Name a WR with an 85+ reception season | Steve Smith | 107 rec · 2009 | default | 00-0025438 |
-| 8 | 2026-11-16 | 7 | Name an AP Offensive Rookie of the Year | Tetairoa McMillan | Won 2025 | default | 00-0040124 |
+| 8 | 2026-11-16 | 6 | Name a WR with an 85+ reception season | Eddie Royal | 91 rec · 2008 | default | 00-0026182 |
+| 8 | 2026-11-16 | 7 | Name an AP Offensive Rookie of the Year | Billy Sims | Won 1980 | default | SIM659150 |
 | 9 | 2026-11-17 | 1 | Name a Cardinals QB | Jim McMahon | 1 start · 1994 | default | 00-0010997 |
 | 9 | 2026-11-17 | 2 | Name a Titans RB | Senorise Perry | 7 games · 2020 | default | 00-0031209 |
 | 9 | 2026-11-17 | 3 | Name a player who played for the Falcons and the Saints | Josh Andrews | Falcons 2021 · Saints 2022 | default | 00-0030706 |
 | 9 | 2026-11-17 | 4 | Name a player who played for the Lions and the Vikings | Tramaine Brock | Lions 2020 · Vikings 2017 | default | 00-0027375 |
 | 9 | 2026-11-17 | 5 | Name an AFC RB from the 1970s | Dick Hoak | Steelers · 1970 | default | pfr:HoakDi00 |
 | 9 | 2026-11-17 | 6 | Name a TE with a 65+ reception season | Gary Barnidge | 79 rec · 2015 | default | 00-0026281 |
-| 9 | 2026-11-17 | 7 | Name an AP Defensive Rookie of the Year | Leslie O'Neal | Won 1986 | default | 00-0012274 |
+| 9 | 2026-11-17 | 7 | Name an AP Defensive Rookie of the Year | Al Baker | Won 1978 | default | BAK226054 |
 | 10 | 2026-11-18 | 1 | Name an Eagles TE | Stephen Spach | 7 games · 2005 | default | 00-0023108 |
 | 10 | 2026-11-18 | 2 | Name an AFC North RB | Jordan Todman | Steelers · 2015 | default | 00-0028121 |
 | 10 | 2026-11-18 | 3 | Name a player who played for the Seahawks and the Rams | Jeremy Lincoln | Seahawks 1997 · Rams 1996 | default | 00-0009933 |
 | 10 | 2026-11-18 | 4 | Name a player who played for the Bengals and the Steelers | Jamon Meredith | Bengals 2014 · Steelers 2011 | default | 00-0027112 |
 | 10 | 2026-11-18 | 5 | Name an NFC QB from the 1990s | Bernie Kosar | Cowboys · 1993 | default | 00-0009427 |
-| 10 | 2026-11-18 | 6 | Name a TE with a 7+ receiving TD season | Gary Barnidge | 9 TD · 2015 | default | 00-0026281 |
-| 10 | 2026-11-18 | 7 | Name an AP Comeback Player of the Year | Garrison Hearst | Won 2001 | default | 00-0007180 |
+| 10 | 2026-11-18 | 6 | Name a TE with a 7+ receiving TD season | Devin Funchess | 8 TD · 2017 | default | 00-0032055 |
+| 10 | 2026-11-18 | 7 | Name an AP Comeback Player of the Year | Tommy Maddox | Won 2002 | default | 00-0010261 |
 | 11 | 2026-11-19 | 1 | Name a 49ers QB | Sam Darnold | 1 start · 2023 | default | 00-0034869 |
 | 11 | 2026-11-19 | 2 | Name a Vikings WR | Gary Ballman | 1 season · 1973 | default | pfr:BallGa00 |
-| 11 | 2026-11-19 | 3 | Name a player who played for the Falcons and the Panthers | Terrell McClain | Falcons 2018 · Panthers 2011 | default | 00-0028003 |
+| 11 | 2026-11-19 | 3 | Name a player who played for the Falcons and the Panthers | Omar Gaither | Falcons 2013 · Panthers 2011 | default | 00-0024382 |
 | 11 | 2026-11-19 | 4 | Name a player who played for the Giants and the Eagles | Ryan Lewis | Giants 2020 · Eagles 2019 | default | 00-0033608 |
 | 11 | 2026-11-19 | 5 | Name an NFC WR from the 1980s | Carlos Carson | Eagles · 1989 | default | CAR566826 |
 | 11 | 2026-11-19 | 6 | Name a RB with a 500+ receiving yard season | Duke Johnson | 693 yds · 2017 | default | 00-0032257 |
-| 11 | 2026-11-19 | 7 | Name an AP MVP | Y.A. Tittle | Won 1963 | default | pfr:TittY.00 |
-| 12 | 2026-11-20 | 1 | Name a Seahawks RB | Fred McCrary | 1 game · 2007 | default | 00-0010747 |
+| 11 | 2026-11-19 | 7 | Name an AP MVP | Brian Sipe | Won 1980 | default | SIP415291 |
+| 12 | 2026-11-20 | 1 | Name a Seahawks RB | Justin Griffith | 13 games · 2009 | default | 00-0022011 |
 | 12 | 2026-11-20 | 2 | Name an AFC East QB | Brian Hoyer | Patriots · 2009–22 | default | 00-0026625 |
 | 12 | 2026-11-20 | 3 | Name a skill player (RB/WR/TE) who played for the Eagles and Washington | Bill Larson | Eagles 1978 · Washington 1977 | default | LAR751469 |
 | 12 | 2026-11-20 | 4 | Name a skill player (RB/WR/TE) who played for the Bears and the Lions | Michael Gaines | Bears 2009 · Lions 2008 | default | 00-0022706 |
 | 12 | 2026-11-20 | 5 | Name a kicker from the 1990s | Mike Lansford | Rams · 1990 | default | LAN759853 |
 | 12 | 2026-11-20 | 6 | Name a WR with a 9+ receiving TD season | Nick Westbrook-Ikhine | 9 TD · 2024 | default | 00-0036182 |
-| 12 | 2026-11-20 | 7 | Name an AP Defensive Player of the Year | Bob Sanders | Won 2007 | default | 00-0022944 |
-| 13 | 2026-11-21 | 1 | Name a Dolphins QB | Bernie Kosar | 2 starts · 1994–96 | default | 00-0009427 |
+| 12 | 2026-11-20 | 7 | Name an AP Defensive Player of the Year | Dick Anderson | Won 1973 | default | AND435547 |
+| 13 | 2026-11-21 | 1 | Name a Dolphins QB | Steve DeBerg | 4 starts · 1993 | default | 00-0004116 |
 | 13 | 2026-11-21 | 2 | Name a Saints WR | Sean Dawkins | 1 season · 1998 | default | 00-0004077 |
 | 13 | 2026-11-21 | 3 | Name a skill player (RB/WR/TE) who played for the Bills and the Patriots | Eddie Ray | Bills 1976 · Patriots 1970 | default | RAY332232 |
 | 13 | 2026-11-21 | 4 | Name a player who played for the Saints and the Buccaneers | Tony McDaniel | Saints 2017 · Buccaneers 2015 | default | 00-0024102 |
 | 13 | 2026-11-21 | 5 | Name an NFC TE from the 1990s | Kendall Gammon | Saints · 1996–99 | default | 00-0005732 |
 | 13 | 2026-11-21 | 6 | Name a QB with a 200+ rushing yard season | Cade McNown | 326 yds · 2000 | default | 00-0011044 |
-| 13 | 2026-11-21 | 7 | Name an AP Offensive Rookie of the Year | Tetairoa McMillan | Won 2025 | default | 00-0040124 |
+| 13 | 2026-11-21 | 7 | Name an AP Offensive Rookie of the Year | Percy Harvin | Won 2009 | default | 00-0026998 |
 | 14 | 2026-11-22 | 1 | Name a Bears QB | Case Keenum | 2 starts · 2025–26 | default | 00-0028986 |
 | 14 | 2026-11-22 | 2 | Name an NFC West TE | Justin Peelle | 49ers · 2011 | default | 00-0021227 |
 | 14 | 2026-11-22 | 3 | Name a player who played for the Broncos and the Chiefs | Amon Gordon | Broncos 2007 · Chiefs 2011 | default | 00-0022878 |
 | 14 | 2026-11-22 | 4 | Name a player who played for the Packers and the Lions | Ricky Jean Francois | Packers 2017 · Lions 2018 | default | 00-0026502 |
-| 14 | 2026-11-22 | 5 | Name an AFC QB from the 1980s | Bob Griese | Dolphins · 1980 | default | GRI037752 |
-| 14 | 2026-11-22 | 6 | Name a RB with a 60+ reception season | Duke Johnson | 74 rec · 2017 | default | 00-0032257 |
-| 14 | 2026-11-22 | 7 | Name an AP Defensive Rookie of the Year | Leslie O'Neal | Won 1986 | default | 00-0012274 |
+| 14 | 2026-11-22 | 5 | Name an AFC QB from the 1980s | Ron Jaworski | Dolphins, Chiefs · 1987–89 | default | JAW553722 |
+| 14 | 2026-11-22 | 6 | Name a RB with a 60+ reception season | Nyheim Hines | 63 rec · 2018 | default | 00-0034367 |
+| 14 | 2026-11-22 | 7 | Name an AP Defensive Rookie of the Year | Hugh Douglas | Won 1995 | default | 00-0004470 |

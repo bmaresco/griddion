@@ -87,7 +87,8 @@ def _peak(con, prompt: Prompt, answers: pl.DataFrame) -> pl.DataFrame:
     return out
 
 
-def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> tuple[pl.DataFrame, dict]:
+def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None,
+                  ykb_exclude: set[str] | None = None) -> tuple[pl.DataFrame, dict]:
     """-> (answers with F, A, R, R', tier), info {unit, notes}."""
     p, a = result.prompt, result.answers
     info: dict = {"notes": []}
@@ -146,7 +147,7 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
     a = a.with_columns(R_prime=pl.col("R") * (1 + pl.col("n_higher")) ** (-DELTA))
     a = a.with_columns(tier=_tier_expr(threshold_kind(p)))
     # §2 YKB Kid: the prompt's override, else the highest-fame Sleeper Pick (else Hidden Gem)
-    ykb = p.ykb_kid or default_ykb_kid(a)
+    ykb = p.ykb_kid or default_ykb_kid(a, ykb_exclude)
     if ykb:
         a = a.with_columns(tier=pl.when(pl.col("player_id") == ykb).then(pl.lit("YKB Kid")).otherwise(pl.col("tier")))
     info["ykb_kid"] = ykb
@@ -202,10 +203,13 @@ def calibrate(pooled: list[tuple[float, float]]) -> dict:
     return out
 
 
-def default_ykb_kid(scored: pl.DataFrame) -> str | None:
-    """§2: highest-fame Sleeper Pick; if the prompt has none, highest-fame Hidden Gem."""
+def default_ykb_kid(scored: pl.DataFrame, exclude: set[str] | None = None) -> str | None:
+    """§2: highest-fame Sleeper Pick; if the prompt has none, highest-fame Hidden Gem.
+    Players in `exclude` (YKB Kids of the previous 13 drives) are skipped, so a player is
+    YKB Kid at most once in any 14-day window."""
+    exclude = exclude or set()
     for tier in ("Sleeper Pick", "Hidden Gem"):
-        c = scored.filter(pl.col("tier") == tier)
+        c = scored.filter((pl.col("tier") == tier) & ~pl.col("player_id").is_in(list(exclude)))
         if c.height:
             return c.sort(["F", "player_id"], descending=[True, False])["player_id"][0]
     return None
