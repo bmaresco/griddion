@@ -61,14 +61,6 @@ From the `coverage` table (regenerate with `uv run refresh --only build`):
 | Wikipedia article | ~95% of players since 1970 | |
 | Honors (Pro Bowl, All-Pro, awards, HOF) | all eras | Parsed from infobox highlights; AP MVP found for every season 1957–2025 except 1963 |
 
-**Implications for steps 2–3**
-
-* Validity (§3) can only be enforced for **1999+** (QB starts; games for players
-  with stats) and fully for **2013+** (all positions). Pre-1999 prompts can only
-  use roster membership, which includes players who never took a snap. Either
-  limit team/era prompts to 1999+ or accept roster membership with a flag.
-* Non-QB association must use **games** (unit rule, §7), since no starts exist.
-  The games-fallback comparison test only applies to QBs.
-* Award rule review: some infoboxes list non-AP versions of DPOY/DROY (e.g. 1982
-  Gastineau and Taylor), and Super Bowl titles are listed on players who never
-  appeared in the game. Decide whether trait prompts are AP-only.
+**Decisions** based on these findings (pre-1999 QB starts from Wikipedia lists,
+seasons-on-roster as the non-QB unit, the pre-1999 roster validity exception)
+are recorded in the spec: [`CLAUDE.md`](CLAUDE.md) §3, §4, §7.
