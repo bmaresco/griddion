@@ -31,6 +31,7 @@ import polars as pl
 from .sources.wikipedia import AP_FIRST_SEASON
 
 MIN_ANSWERS = 25        # per prompt, hard stop (§6)
+TIGHT_MARGIN = 3        # within this many of the minimum: flagged in batch probe and the diff report (§6)
 DAY_AVG_MAX = 300       # average across a day's prompts, warning only (§6)
 QB_LIST_FIRST_SEASON = 1950
 STATS_FIRST_SEASON = 1999

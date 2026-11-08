@@ -160,7 +160,7 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 ### Checks between steps
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
 - **Per-day check: average valid answers across a day's 7 prompts > 300 → warning only.** Keeps a day reviewable and aliasable without capping any single prompt. (Replaces the earlier per-prompt 300 warning.)
-- **Diff report** against the last build (new or removed answers, tier changes).
+- **Diff report** against the last build (new or removed answers, tier changes). It also **flags every prompt within 3 of the minimum (≤ 28 valid answers)**, since one roster or award change can push it under. Batch `/probe` marks these `tight`.
 - **Tier spread warnings** (zero Starters, very top-heavy or bottom-heavy). These are warnings only. The spread is never forced.
 - **Human review** of every answer bank before publishing, to catch rule bugs and edge cases.
 
@@ -258,7 +258,19 @@ Set once, objectively:
 
 4. **Freeze** the resulting R′ values and record them here.
 
-**Decision: thresholds per prompt type — trait vs everything else.** Steps 1–4 run separately for the two groups (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values. Reason: `A = 1` for trait prompts puts them on a different scale. With one shared set, award and stat prompts filled most of the pooled top 10% and couldn't produce Hidden Gems or Sleepers (AP MVP came out 30 Starters · 21 Backups · 0 · 0), while team prompts got only 1–8 Starters each.
+**Decision: thresholds per prompt group — award, stat, and other.** Steps 1–4 run separately for each group (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values.
+
+| Group | Prompts | Calibration set |
+|---|---|---|
+| award | trait prompts with an `award` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
+| stat | trait prompts with a `stat_threshold` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
+| other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
+
+Reasons:
+- **Trait vs other:** `A = 1` for trait prompts puts them on a different scale. With one shared set, award and stat prompts filled most of the pooled top 10% and couldn't produce Hidden Gems or Sleepers (AP MVP came out 30 Starters · 21 Backups · 0 · 0), while team prompts got only 1–8 Starters each.
+- **Award vs stat:** award winners are a much more famous pool than stat qualifiers. With one trait set, stat prompts spread across all four tiers but award prompts produced almost no Sleepers (AP MVP 9 · 32 · 10 · 0, Comeback 4 · 16 · 6 · 1).
+
+`data/tier_thresholds.json` holds the frozen values per group; prompts are routed by `threshold_kind()`.
 
 Each prompt is then scored against the same frozen values, so hard prompts naturally get few Starters and easy prompts get many. There are no per-prompt quotas.
 

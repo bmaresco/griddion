@@ -13,7 +13,7 @@ import sys
 
 import polars as pl
 
-from .answers import DAY_AVG_MAX, MIN_ANSWERS, Prompt, Result, build_answers
+from .answers import DAY_AVG_MAX, MIN_ANSWERS, TIGHT_MARGIN, Prompt, Result, build_answers
 from .db import connect
 from .scoring import TIERS, load_thresholds, score_answers
 
@@ -88,7 +88,8 @@ def batch(con, path: str) -> str:
         row = {"day": obj.get("day"), "prompt": (p.text or p.id)[:52]}
         try:
             r = build_answers(con, p)
-            row |= {"answers": r.n, "status": "ok" if r.n >= MIN_ANSWERS else "STOP",
+            status = "STOP" if r.n < MIN_ANSWERS else ("tight" if r.n <= MIN_ANSWERS + TIGHT_MARGIN else "ok")
+            row |= {"answers": r.n, "status": status,
                     "top": _names(r.answers, 3)[:40], "warnings": "; ".join(r.warnings)[:60]}
         except Exception as ex:  # keep going; report the bad prompt
             row |= {"answers": None, "status": "error", "top": "", "warnings": str(ex)[:60]}
@@ -100,7 +101,8 @@ def batch(con, path: str) -> str:
         if df["day"].drop_nulls().len():
             days = df.group_by("day", maintain_order=True).agg(
                 pl.len().alias("prompts"), pl.col("answers").mean().round(1).alias("avg_answers"),
-                (pl.col("status") != "ok").sum().alias("below_min_or_error"))
+                pl.col("status").is_in(["STOP", "error"]).sum().alias("below_min_or_error"),
+                (pl.col("status") == "tight").sum().alias("tight"))
             days = days.with_columns(check=pl.when(pl.col("avg_answers") > DAY_AVG_MAX)
                                      .then(pl.lit(f"⚠️ avg > {DAY_AVG_MAX}")).otherwise(pl.lit("ok")))
             out.append(str(days))
@@ -140,14 +142,14 @@ if __name__ == "__main__":
     main()
 
 
-def calibrate_file(con, path: str, freeze: bool) -> str:
+def calibrate_file(con, path: str, freeze: bool, lifetime_blend: float | None = None) -> str:
     """§7 threshold calibration, per prompt type (trait vs other): pool R' with every prompt
     weighted equally, cut at 10/35/35/20."""
     import datetime as dt
 
     from .scoring import CALIBRATION_SHARES, THRESHOLDS_FILE, calibrate, fame, threshold_kind
-    f = fame(con)
-    pooled: dict[str, list] = {"trait": [], "other": []}
+    f = fame(con, lifetime_blend)
+    pooled: dict[str, list] = {}
     per = []
     for line in open(path):
         line = line.strip()
@@ -157,7 +159,7 @@ def calibrate_file(con, path: str, freeze: bool) -> str:
         scored, _ = score_answers(con, build_answers(con, p), f)
         kind = threshold_kind(p)
         n = max(scored.height, 1)
-        pooled[kind] += [(x, 1.0 / n) for x in scored["R_prime"].to_list()]  # every prompt weighs the same
+        pooled.setdefault(kind, []).extend((x, 1.0 / n) for x in scored["R_prime"].to_list())  # every prompt weighs the same
         per.append((p.id or p.text, kind, scored))
     th = {k: calibrate(v) for k, v in pooled.items() if v}
     lines = []

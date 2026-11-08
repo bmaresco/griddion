@@ -17,6 +17,9 @@ from .db import DATA_DIR
 # §7 Fame
 W_PV, W_HONORS, W_CAREER = 0.60, 0.25, 0.15
 PV_FLOOR, PV_CEILING = 30, 300_000            # avg monthly views, last 24 months
+# share of the lifetime monthly average (since 2015, or since the article's first month) blended
+# into the pageview signal; 0 = 24-month average only (§7). Under test, see §11.
+PV_LIFETIME_BLEND = 0.0
 HONORS_WEIGHTS = {"pro_bowls": 1, "afl_all_star": 1, "all_pro_2nd": 1, "all_pro_1st": 2, "hof": 6}
 HONORS_CAP = 20                                # median HOF honors points under HONORS_WEIGHTS
 CAREER_CAP = 15                                # seasons
@@ -35,19 +38,23 @@ CALIBRATION_SHARES = [0.10, 0.35, 0.35, 0.20]  # §7: top 10% / next 35% / next 
 
 # --------------------------------------------------------------------- fame
 
-def fame(con) -> pl.DataFrame:
+def fame(con, lifetime_blend: float | None = None) -> pl.DataFrame:
     """F for every player (same for every prompt)."""
+    b = PV_LIFETIME_BLEND if lifetime_blend is None else lifetime_blend
     hp = " + ".join(f"{w} * {'hof::INT' if c == 'hof' else c}" for c, w in HONORS_WEIGHTS.items())
     lo, hi = math.log10(PV_FLOOR), math.log10(PV_CEILING)
     return con.sql(f"""
         WITH c AS (SELECT player_id, count(DISTINCT season) FILTER (WHERE counted) AS seasons
                    FROM player_team_seasons GROUP BY 1)
-        SELECT h.player_id,
-               greatest(0, least(1, (log10(greatest(h.pv24, 1)) - {lo}) / ({hi} - {lo}))) AS s_pv,
+        , pv AS (SELECT h.player_id,
+                        {1 - b} * h.pv24 + {b} * coalesce(h.pageviews / nullif(h.pv_months, 0), 0) AS pv
+                 FROM player_honors h)
+        SELECT h.player_id, pv.pv,
+               greatest(0, least(1, (log10(greatest(pv.pv, 1)) - {lo}) / ({hi} - {lo}))) AS s_pv,
                greatest(0, least(1, ({hp}) / {HONORS_CAP})) AS s_honors,
                greatest(0, least(1, coalesce(c.seasons, 0) / {CAREER_CAP})) AS s_career,
                ({hp}) AS honors_points
-        FROM player_honors h LEFT JOIN c USING (player_id)
+        FROM player_honors h LEFT JOIN c USING (player_id) JOIN pv USING (player_id)
     """).pl().with_columns(
         F=W_PV * pl.col("s_pv") + W_HONORS * pl.col("s_honors") + W_CAREER * pl.col("s_career"))
 
@@ -136,8 +143,11 @@ def load_thresholds() -> dict | None:
 
 
 def threshold_kind(prompt: Prompt) -> str:
-    """§7: trait prompts (A = 1) sit on a different scale, so they get their own thresholds."""
-    return "trait" if prompt.is_trait else "other"
+    """§7: three threshold groups. Trait prompts (A = 1) sit on a different scale from the rest,
+    and award winners are a much more famous pool than stat qualifiers."""
+    if not prompt.is_trait:
+        return "other"
+    return "award" if "award" in prompt.filters else "stat"
 
 
 def _tier_expr(kind: str) -> pl.Expr:
