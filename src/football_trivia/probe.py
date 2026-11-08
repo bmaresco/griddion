@@ -121,11 +121,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--all", action="store_true", help="list every valid answer")
     ap.add_argument("--calibrate", metavar="FILE", help="pool R' over the prompts in FILE and print §7 thresholds")
     ap.add_argument("--freeze", action="store_true", help="with --calibrate: write data/tier_thresholds.json")
+    ap.add_argument("--groups", help="with --freeze: comma-separated threshold groups to rewrite "
+                    "(e.g. award); the other groups keep their frozen values")
     ap.add_argument("--db")
     args = ap.parse_args(argv)
     con = connect(args.db, read_only=True)
     if args.calibrate:
-        print(calibrate_file(con, args.calibrate, args.freeze))
+        print(calibrate_file(con, args.calibrate, args.freeze,
+                             groups=set(args.groups.split(",")) if args.groups else None))
         return
     if args.file:
         print(batch(con, args.file))
@@ -147,7 +150,8 @@ if __name__ == "__main__":
     main()
 
 
-def calibrate_file(con, path: str, freeze: bool, lifetime_blend: float | None = None) -> str:
+def calibrate_file(con, path: str, freeze: bool, lifetime_blend: float | None = None,
+                   groups: set[str] | None = None) -> str:
     """§7 threshold calibration, per prompt type (trait vs other): pool R' with every prompt
     weighted equally, cut at 10/35/35/20."""
     import datetime as dt
@@ -179,8 +183,20 @@ def calibrate_file(con, path: str, freeze: bool, lifetime_blend: float | None = 
             c[next((t for t, v in th[kind].items() if x >= v), "Sleeper Pick")] += 1
         lines.append(f"  {name:<12} {kind:<6} " + " · ".join(str(c[t]) for t in TIERS) + f"   (n={sc.height})")
     if freeze:
-        THRESHOLDS_FILE.write_text(json.dumps({"by_type": th, "shares": CALIBRATION_SHARES, "prompts_file": path,
-                                               "pooled_answers": {k: len(v) for k, v in pooled.items()},
-                                               "frozen_at": dt.date.today().isoformat()}, indent=2))
-        lines.append(f"Frozen to {THRESHOLDS_FILE}")
+        today = dt.date.today().isoformat()
+        if groups:  # rewrite only these groups; the rest keep their frozen values and counts
+            cur = json.loads(THRESHOLDS_FILE.read_text())
+            if unknown := groups - th.keys():
+                raise ValueError(f"no calibration prompts for group(s) {sorted(unknown)}")
+            for k in groups:
+                cur["by_type"][k] = th[k]
+                cur["pooled_answers"][k] = len(pooled[k])
+                cur.setdefault("group_frozen_at", {})[k] = today
+            THRESHOLDS_FILE.write_text(json.dumps(cur, indent=2))
+            lines.append(f"Froze {sorted(groups)} to {THRESHOLDS_FILE}; other groups unchanged")
+        else:
+            THRESHOLDS_FILE.write_text(json.dumps({"by_type": th, "shares": CALIBRATION_SHARES, "prompts_file": path,
+                                                   "pooled_answers": {k: len(v) for k, v in pooled.items()},
+                                                   "frozen_at": today}, indent=2))
+            lines.append(f"Frozen to {THRESHOLDS_FILE}")
     return "\n".join(lines)

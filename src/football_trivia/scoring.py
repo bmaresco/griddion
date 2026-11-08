@@ -23,6 +23,8 @@ PV_LIFETIME_BLEND = 0.0
 HONORS_WEIGHTS = {"pro_bowls": 1, "afl_all_star": 1, "all_pro_2nd": 1, "all_pro_1st": 2, "hof": 6}
 HONORS_CAP = 20                                # median HOF honors points under HONORS_WEIGHTS
 CAREER_CAP = 15                                # seasons
+# threshold groups whose F is the pageview signal alone (F = s_pv): award prompts (§7)
+PV_ONLY_FAME_GROUPS = {"award"}
 
 # §7 Association / crowding
 DELTA = 0.15
@@ -96,6 +98,10 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None,
         return a, info
     fame_df = fame(con) if fame_df is None else fame_df
     a = a.join(fame_df, on="player_id", how="left").with_columns(pl.col("F").fill_null(0.0))
+    if threshold_kind(p) in PV_ONLY_FAME_GROUPS:
+        # §7 (2026-11-08): award prompts use F = s_pv. The award already says why the player
+        # is known, so honors and career length double-count and penalize recent winners.
+        a = a.with_columns(F=pl.col("s_pv").fill_null(0.0))
 
     if p.is_trait:
         info["unit"] = "trait"

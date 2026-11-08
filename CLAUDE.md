@@ -29,7 +29,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Botched Trick Play | 15 | Optional; the famous "obscure" pick everyone reaches for. Used sparingly |
 | Invalid / no answer | 0 | |
 
-- **YKB Kid**: one per prompt. **Default: the highest-fame (F) Sleeper Pick; if the prompt has no Sleeper Pick, the highest-fame Hidden Gem.** **A player can be YKB Kid at most once in any 14-day window:** if the default pick was already YKB Kid in the previous 13 drives (or earlier in the same drive), take the next-highest-fame eligible pick, in drive order. A prompt can override it with `"ykb_kid": "<player_id>"` (publish warns if the override repeats within the window). `prompts/ykb_review.md` lists every prompt's pick and context line for a quick skim (`uv run python prompts/ykb_review.py`).
+- **YKB Kid**: one per prompt. **Default: the highest-fame (F, the prompt's own F per §7: `s_pv` on award prompts) Sleeper Pick; if the prompt has no Sleeper Pick, the highest-fame Hidden Gem.** **A player can be YKB Kid at most once in any 14-day window:** if the default pick was already YKB Kid in the previous 13 drives (or earlier in the same drive), take the next-highest-fame eligible pick, in drive order. A prompt can override it with `"ykb_kid": "<player_id>"` (publish warns if the override repeats within the window). `prompts/ykb_review.md` lists every prompt's pick and context line for a quick skim (`uv run python prompts/ykb_review.py`).
 - **Botched Trick Play** is a **manual option only**: never assigned or suggested by the pipeline. It's used on a handful of prompts at most, and only when explicitly added to a prompt (`"botched_trick_play": "<player_id>"`), which overrides that one answer's tier. **No prompt uses it at launch.** (An automatic suggestion — most famous answer with F ≥ 0.58 and A ≤ 0.35 — was tried on the 14-day draft and all 32 suggestions were rejected.)
 
 ---
@@ -211,6 +211,7 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
 ### Scheduling and publish flow
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
 - **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers or with fewer than 3 Sleeper Picks besides the YKB Kid (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
+- **Frozen drives (decided 2026-11-08): a drive is frozen once it goes live (00:00 ET on its date). Never regenerate a live or past drive.** Drives up to `frozen_through` in `prompts/schedule.json` are frozen too, before their date (currently `1`: Drive 1 stays exactly as published). `publish build` and `publish diff` read frozen drives back from `public/days/<n>.json` and never rewrite them, even with `--force`; their YKB Kids still count for the 14-day window. `publish schedule` refuses to change a frozen drive. So a rule or threshold change reaches only unfrozen drives: Drive 1's AP MVP (d01-7) keeps the tiers from before award `F = s_pv`.
 - **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
@@ -227,14 +228,16 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
 
 All components are 0–1. Every default below has a written reason. Change a number only with a reason, recorded here.
 
-### Fame, F (per player, same for every prompt)
+### Fame, F (per player; one formula for award prompts, one for everything else)
 ```
-F = 0.60·s_pv + 0.25·s_honors + 0.15·s_career
+F = 0.60·s_pv + 0.25·s_honors + 0.15·s_career     stat and other prompts
+F = s_pv                                          award prompts
 
 s_pv     = clamp( (log10(pv24) − log10(30)) / (log10(300000) − log10(30)), 0, 1 )
 s_honors = clamp( honors_points / HONORS_CAP, 0, 1 )
 s_career = clamp( seasons / 15, 0, 1 )
 ```
+**Decision (2026-11-08): award prompts use the pageview signal alone (`F = s_pv`).** The award already says why the player is known, so honors and career length double-count it, and they penalize recent winners who haven't had time to collect Pro Bowls or seasons yet (Tetairoa McMillan, 2025 OROY, was the OROY YKB Kid under the blended F; he's a Backup with `F = s_pv`). Stat and other prompts keep the blended F. `scoring.PV_ONLY_FAME_GROUPS`. The YKB Kid default (§2) uses the prompt's F, so on award prompts it's the most-viewed Sleeper Pick. Award thresholds were recalibrated for this (see *Frozen thresholds*). The general fix for the recent-player penalty (option b) is an open item (§11).
 - `pv24` = **average monthly** enwiki pageviews (user agent) over the **most recent 24 complete months**. **Main signal** for how known a player is. No Wikipedia article → `s_pv = 0`.
 - `honors_points` = weighted Pro Bowls + All-Pro + Hall of Fame (table below). Protects pre-internet stars whose pageviews undercount their fame.
 - `seasons` = distinct seasons on a regular-season roster. Separates a 10-year starter from a one-season player.
@@ -337,10 +340,13 @@ Reasons:
 | Group | Starter | Backup | Hidden Gem | Sleeper Pick |
 |---|---|---|---|---|
 | other | 0.2754 | 0.0892 | 0.0324 | below 0.0324 |
-| award | 0.6832 | 0.4495 | 0.2993 | below 0.2993 |
+| award | 0.7155 | 0.4705 | 0.3270 | below 0.3270 |
 | stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
 
-Change these only by rerunning the calibration (`probe --calibrate prompts/calibration.jsonl --freeze`) with a recorded reason.
+- **Award recalibrated 2026-11-08** for award `F = s_pv` (above): same 6 prompts / 284 answers, same 10/35/35/20 split, equal per-prompt weighting. Was 0.6832 / 0.4495 / 0.2993. With the old F, today's data reproduces the old award values exactly, so the whole shift comes from the F change. Only the award group was refrozen (`--groups award`): rerunning other on today's data gives slightly different values (1,621 answers; Backup 0.0900), from data refreshes since the freeze rather than any rule change, so other and stat keep their recorded values.
+- Award calibration spread after the change (Starter · Backup · Hidden Gem · Sleeper): MVP 6 · 18 · 23 · 4, DPOY 3 · 16 · 15 · 9, OROY 4 · 17 · 19 · 19, OPOY 5 · 18 · 19 · 2, DROY 2 · 14 · 15 · 29, Comeback 5 · 12 · 8 · 2.
+
+Change these only by rerunning the calibration (`probe --calibrate prompts/calibration.jsonl --freeze`, or `--groups award` etc. to refreeze only some groups) with a recorded reason.
 
 Each prompt is then scored against the same frozen values, so hard prompts naturally get few Starters and easy prompts get many. There are no per-prompt quotas.
 
@@ -447,4 +453,5 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - **Known limit: no `peak` before 1999.** Season stats start in 1999, so pre-1999 era prompts can't rescue a short, famous tenure with `peak`, and those players read as low association (e.g. Joe Montana's 1990 season on "NFC QB from the 1990s" is a 1-of-many-seasons stint: A ≈ 0.21). Revisit with real answer data after launch.
+- **Known issue: honors and career length penalize recent players (all prompt types).** `s_honors` and `s_career` grow with time in the league, so a recent player reads as less famous than his real recall (a rookie has at most 1 season and few honors). Award prompts sidestep it with `F = s_pv` (§7, 2026-11-08). **Option (b), to revisit with real answer data:** scale career length by *possible* seasons (seasons since debut, capped at 15) instead of absolute seasons, and don't apply an honors penalty in a player's early years. This would apply to all prompt types and could let award prompts go back to the blended F.
 - ~~Game title~~ — **resolved:** Griddion (griddion.io)
