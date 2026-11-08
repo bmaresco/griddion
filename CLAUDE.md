@@ -30,7 +30,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Invalid / no answer | 0 | |
 
 - **YKB Kid** is chosen manually from the Sleeper Pick / Hidden Gem answers. It's the most satisfying deep pull, not necessarily the rarest.
-- **Botched Trick Play** is never assigned automatically. The pipeline may *suggest* at most one candidate per prompt (a high-fame player with low association to the prompt). The human decides, and most prompts have none.
+- **Botched Trick Play** is never assigned automatically. The pipeline may *suggest* at most one candidate per prompt: the most famous answer with **F ≥ 0.58** (about the top 2% of all players) and **A ≤ 0.35** (weak tie to the prompt). Trait prompts (A = 1) never get one. The human decides, and most prompts have none.
 
 ---
 
@@ -161,7 +161,7 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
 - **Per-day check: average valid answers across a day's 7 prompts > 300 → warning only.** Keeps a day reviewable and aliasable without capping any single prompt. (Replaces the earlier per-prompt 300 warning.)
 - **Diff report** against the last build (new or removed answers, tier changes). It also **flags every prompt within 3 of the minimum (≤ 28 valid answers)**, since one roster or award change can push it under. Batch `/probe` marks these `tight`.
-- **Tier spread warnings** (zero Starters, very top-heavy or bottom-heavy). These are warnings only. The spread is never forced.
+- **Tier spread warnings**: zero Starters; zero Sleepers; **very top-heavy** = Starter + Backup above 70% of answers; **very bottom-heavy** = Hidden Gem + Sleeper above 85%. (Calibration targets 45/55, so these flag clear outliers.) Warnings only. The spread is never forced.
 - **Human review** of every answer bank before publishing, to catch rule bugs and edge cases.
 
 ---
@@ -274,6 +274,16 @@ Reasons:
 - **Award vs stat:** award winners are a much more famous pool than stat qualifiers. With one trait set, stat prompts spread across all four tiers but award prompts produced almost no Sleepers (AP MVP 9 · 32 · 10 · 0, Comeback 4 · 16 · 6 · 1).
 
 `data/tier_thresholds.json` holds the frozen values per group; prompts are routed by `threshold_kind()`.
+
+**Frozen thresholds** (2026-11-08, `prompts/calibration.jsonl`: other 15 prompts / 1,638 answers, award 6 / 284, stat 6 / 743; 24-month pageview signal; prominence in association). Lower bounds on R′:
+
+| Group | Starter | Backup | Hidden Gem | Sleeper Pick |
+|---|---|---|---|---|
+| other | 0.2754 | 0.0892 | 0.0324 | below 0.0324 |
+| award | 0.6832 | 0.4495 | 0.2993 | below 0.2993 |
+| stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
+
+Change these only by rerunning the calibration (`probe --calibrate prompts/calibration.jsonl --freeze`) with a recorded reason.
 
 Each prompt is then scored against the same frozen values, so hard prompts naturally get few Starters and easy prompts get many. There are no per-prompt quotas.
 

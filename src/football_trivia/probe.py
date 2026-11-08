@@ -15,7 +15,7 @@ import polars as pl
 
 from .answers import DAY_AVG_MAX, MIN_ANSWERS, TIGHT_MARGIN, Prompt, Result, build_answers
 from .db import connect
-from .scoring import TIERS, load_thresholds, score_answers
+from .scoring import TIERS, fame, load_thresholds, score_answers, spread_warnings, suggest_botched
 
 SAMPLE = 8
 
@@ -79,6 +79,7 @@ def report(r: Result, show_all: bool = False, scored: pl.DataFrame | None = None
 def batch(con, path: str) -> str:
     """One prompt JSON per line; an optional "day" key groups prompts for the per-day check."""
     rows = []
+    f = fame(con)
     for line in open(path):
         line = line.strip()
         if not line or line.startswith("#"):
@@ -89,14 +90,20 @@ def batch(con, path: str) -> str:
         try:
             r = build_answers(con, p)
             status = "STOP" if r.n < MIN_ANSWERS else ("tight" if r.n <= MIN_ANSWERS + TIGHT_MARGIN else "ok")
+            scored, _ = score_answers(con, r, f)
+            c = {t: int((scored["tier"] == t).sum()) for t in TIERS} if r.n else {}
+            btp = suggest_botched(scored)
             row |= {"answers": r.n, "status": status,
-                    "top": _names(r.answers, 3)[:40], "warnings": "; ".join(r.warnings)[:60]}
+                    "S·B·HG·SP": " · ".join(str(c.get(t, 0)) for t in TIERS),
+                    "spread_warnings": "; ".join(spread_warnings(scored)),
+                    "botched_suggestion": f"{btp['display_name']} (F {btp['F']:.2f}, A {btp['A']:.2f})" if btp else "",
+                    "warnings": "; ".join(r.warnings)[:60]}
         except Exception as ex:  # keep going; report the bad prompt
-            row |= {"answers": None, "status": "error", "top": "", "warnings": str(ex)[:60]}
+            row |= {"answers": None, "status": "error", "S·B·HG·SP": "", "spread_warnings": "", "botched_suggestion": "", "warnings": str(ex)[:60]}
         rows.append(row)
     df = pl.DataFrame(rows)
     out = []
-    with pl.Config(tbl_rows=-1, tbl_width_chars=220, fmt_str_lengths=60):
+    with pl.Config(tbl_rows=-1, tbl_width_chars=260, fmt_str_lengths=70):
         out.append(str(df))
         if df["day"].drop_nulls().len():
             days = df.group_by("day", maintain_order=True).agg(

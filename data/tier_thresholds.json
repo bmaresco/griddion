@@ -1,0 +1,32 @@
+{
+  "by_type": {
+    "other": {
+      "Starter": 0.27536904551465846,
+      "Backup": 0.08916403617331822,
+      "Hidden Gem": 0.03244242279143848
+    },
+    "award": {
+      "Starter": 0.6831756187680954,
+      "Backup": 0.44948180262079784,
+      "Hidden Gem": 0.2992741591700077
+    },
+    "stat": {
+      "Starter": 0.5541830038235006,
+      "Backup": 0.3113907667157771,
+      "Hidden Gem": 0.19451602297845752
+    }
+  },
+  "shares": [
+    0.1,
+    0.35,
+    0.35,
+    0.2
+  ],
+  "prompts_file": "prompts/calibration.jsonl",
+  "pooled_answers": {
+    "other": 1638,
+    "award": 284,
+    "stat": 743
+  },
+  "frozen_at": "2026-11-08"
+}

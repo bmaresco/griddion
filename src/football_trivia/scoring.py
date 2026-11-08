@@ -190,3 +190,37 @@ def calibrate(pooled: list[tuple[float, float]]) -> dict:
         # lowest R' still inside the top `cum` share of weight
         out[tier] = float(df.filter(pl.col("cum") <= cum + 1e-12)["r"].min() if df.filter(pl.col("cum") <= cum + 1e-12).height else df["r"].max())
     return out
+
+
+# -------------------------------------------------------- review helpers (§2, §6)
+
+BOTCHED_MIN_F = 0.58   # ~98th percentile of F across all players: genuinely famous
+BOTCHED_MAX_A = 0.35   # weak tie to the prompt
+TOP_HEAVY, BOTTOM_HEAVY = 0.70, 0.85  # share of Starter+Backup / Hidden Gem+Sleeper that triggers a warning
+
+
+def suggest_botched(scored: pl.DataFrame) -> dict | None:
+    """§2: at most one Botched Trick Play suggestion: the most famous answer with a weak tie
+    to the prompt. Never assigned automatically; a human approves or rejects it."""
+    if scored.height == 0 or "A" not in scored.columns:
+        return None
+    c = scored.filter((pl.col("F") >= BOTCHED_MIN_F) & (pl.col("A") <= BOTCHED_MAX_A)).sort("F", descending=True)
+    return c.row(0, named=True) if c.height else None
+
+
+def spread_warnings(scored: pl.DataFrame) -> list[str]:
+    """§6 tier-spread warnings. Warnings only: the spread is never forced."""
+    n = scored.height
+    if n == 0 or scored["tier"].null_count() == n:
+        return []
+    c = {t: int((scored["tier"] == t).sum()) for t in TIERS}
+    w = []
+    if c["Starter"] == 0:
+        w.append("zero Starters")
+    if c["Sleeper Pick"] == 0:
+        w.append("zero Sleepers")
+    if (c["Starter"] + c["Backup"]) / n > TOP_HEAVY:
+        w.append(f"top-heavy ({(c['Starter'] + c['Backup']) / n:.0%} Starter+Backup)")
+    if (c["Hidden Gem"] + c["Sleeper Pick"]) / n > BOTTOM_HEAVY:
+        w.append(f"bottom-heavy ({(c['Hidden Gem'] + c['Sleeper Pick']) / n:.0%} Hidden Gem+Sleeper)")
+    return w
