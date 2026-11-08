@@ -42,6 +42,7 @@ def build(con, log=print) -> None:
     log("build: QB lists")
     qb_lists.build(con, log)
     _team_seasons(con, log)
+    _production(con, log)
     _aliases(con, log)
     _coverage(con, log)
 
@@ -437,3 +438,17 @@ def _team_seasons(con, log) -> None:
     """)
     n = con.execute("SELECT count(*), count(*) FILTER (WHERE counted), count(*) FILTER (WHERE unconfirmed_status) FROM player_team_seasons").fetchall()[0]
     log(f"  {n[0]} player-team-seasons; {n[1]} counted; {n[2]} pre-2002 unconfirmed (excluded, listed in probe)")
+
+
+def _production(con, log) -> None:
+    """player_season_production: regular-season yards per player x franchise x season (1999+), for `peak` (§7)."""
+    run(con, f"""
+    CREATE OR REPLACE TABLE player_season_production AS
+    SELECT player_id, season, {_franchise_sql('team', 'season')} AS franchise,
+           sum(coalesce(passing_yards, 0)) AS passing_yards,
+           sum(coalesce(rushing_yards, 0) + coalesce(receiving_yards, 0)) AS scrimmage_yards
+    FROM raw_player_week
+    WHERE season_type = 'REG' AND player_id IS NOT NULL
+    GROUP BY player_id, season, team
+    """)
+    log(f"  player_season_production: {con.execute('SELECT count(*) FROM player_season_production').fetchall()[0][0]} rows")

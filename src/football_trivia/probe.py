@@ -15,6 +15,7 @@ import polars as pl
 
 from .answers import DAY_AVG_MAX, MIN_ANSWERS, Prompt, Result, build_answers
 from .db import connect
+from .scoring import TIERS, load_thresholds, score_answers
 
 SAMPLE = 8
 
@@ -36,7 +37,7 @@ def _names(df: pl.DataFrame, n: int) -> str:
     return ", ".join(df["display_name"].head(n).to_list()) or "—"
 
 
-def report(r: Result, show_all: bool = False) -> str:
+def report(r: Result, show_all: bool = False, scored: pl.DataFrame | None = None, info: dict | None = None) -> str:
     p, a = r.prompt, r.answers
     ok = f"✅ (≥ {MIN_ANSWERS})" if r.n >= MIN_ANSWERS else f"⛔ below minimum ({MIN_ANSWERS})"
     out = [f'"{p.text or p.id}"  →  {_describe(p.filters)}', f"Valid answers: {r.n}   {ok}"]
@@ -57,13 +58,21 @@ def report(r: Result, show_all: bool = False) -> str:
         out.append(f"QB source mismatches (Wikipedia vs nflverse, flagged not resolved): {m.height}")
         for row in m.head(10).iter_rows(named=True):
             out.append(f"    {row['season']} {row['franchise']} {row['name']}: wiki {row['wiki_starts']} vs nflverse {row['nflverse_starts']} ({row['status']})")
-    out.append("Tier preview: n/a until step 3 (score_answers)")
+    if scored is not None and scored.height and scored["tier"].null_count() < scored.height:
+        counts = scored["tier"].value_counts()
+        c = {t: n for t, n in counts.iter_rows()}
+        out.append("Tier preview: " + " · ".join(f"{t} {c.get(t, 0)}" for t in TIERS) + f"   (unit: {info['unit']})")
+    elif scored is not None and scored.height:
+        out.append(f"Tier preview: thresholds not frozen yet (run `probe --calibrate`); unit: {info['unit']}")
+    for n in (info or {}).get("notes", []):
+        out.append(f"Note: {n}")
     out += [f"⚠️  {w}" for w in r.warnings]
     if show_all and r.n:
-        cols = ["display_name", "first_season", "last_season", "ctx_seasons", "ctx_games", "ctx_qb_starts",
-                "career_seasons", "career_qb_starts", "pv24", "bases"]
-        with pl.Config(tbl_rows=-1, tbl_width_chars=200, fmt_str_lengths=40):
-            out.append(str(a.select([c for c in cols if c in a.columns])))
+        src = scored if scored is not None else a
+        cols = ["display_name", "first_season", "last_season", "ctx_seasons", "ctx_qb_starts", "career_seasons",
+                "career_qb_starts", "F", "share", "peak", "A", "R_prime", "tier", "bases"]
+        with pl.Config(tbl_rows=-1, tbl_width_chars=220, fmt_str_lengths=40, float_precision=3):
+            out.append(str(src.select([c for c in cols if c in src.columns])))
     return "\n".join(out)
 
 
@@ -103,9 +112,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("prompt", nargs="?", help="prompt JSON (or just the filters object)")
     ap.add_argument("--file", help="batch mode: JSON-lines file of prompts")
     ap.add_argument("--all", action="store_true", help="list every valid answer")
+    ap.add_argument("--calibrate", metavar="FILE", help="pool R' over the prompts in FILE and print §7 thresholds")
+    ap.add_argument("--freeze", action="store_true", help="with --calibrate: write data/tier_thresholds.json")
     ap.add_argument("--db")
     args = ap.parse_args(argv)
     con = connect(args.db, read_only=True)
+    if args.calibrate:
+        print(calibrate_file(con, args.calibrate, args.freeze))
+        return
     if args.file:
         print(batch(con, args.file))
         return
@@ -115,10 +129,45 @@ def main(argv: list[str] | None = None) -> None:
     if "filters" not in obj:
         obj = {"filters": obj}
     try:
-        print(report(build_answers(con, Prompt.from_json(obj)), args.all))
+        r = build_answers(con, Prompt.from_json(obj))
+        scored, info = score_answers(con, r)
+        print(report(r, args.all, scored, info))
     except ValueError as ex:
         sys.exit(f"probe: {ex}")
 
 
 if __name__ == "__main__":
     main()
+
+
+def calibrate_file(con, path: str, freeze: bool) -> str:
+    """§7 threshold calibration: run every prompt, pool R', cut at 10/35/35/20."""
+    import datetime as dt
+
+    from .scoring import CALIBRATION_SHARES, THRESHOLDS_FILE, calibrate, fame
+    f = fame(con)
+    pooled, per = [], []
+    for line in open(path):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        p = Prompt.from_json(line)
+        r = build_answers(con, p)
+        scored, info = score_answers(con, r, f)
+        pooled += scored["R_prime"].to_list()
+        per.append((p.id or p.text, scored))
+    th = calibrate(pooled)
+    lines = [f"Pooled {len(pooled)} answers from {len(per)} prompts. Thresholds (lower bounds on R'):"]
+    lines += [f"  {t:<12} R' ≥ {v:.4f}" for t, v in th.items()] + ["  Sleeper Pick below that"]
+    tier = lambda x: next((t for t, v in th.items() if x >= v), "Sleeper Pick")
+    lines.append("Per prompt (Starter · Backup · Hidden Gem · Sleeper Pick):")
+    for name, s in per:
+        c = {t: 0 for t in TIERS}
+        for x in s["R_prime"].to_list():
+            c[tier(x)] += 1
+        lines.append(f"  {name:<12} " + " · ".join(str(c[t]) for t in TIERS) + f"   (n={s.height})")
+    if freeze:
+        THRESHOLDS_FILE.write_text(json.dumps({"thresholds": th, "shares": CALIBRATION_SHARES, "prompts_file": path,
+                                               "pooled_answers": len(pooled), "frozen_at": dt.date.today().isoformat()}, indent=2))
+        lines.append(f"Frozen to {THRESHOLDS_FILE}")
+    return "\n".join(lines)

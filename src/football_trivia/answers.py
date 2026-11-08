@@ -147,18 +147,20 @@ def build_answers(con, prompt: Prompt) -> Result:
         where, warn = _context_where(f, teams)
         warnings += warn
         df, e = _valid_in_context(con, where, pos, is_qb)
-        per_team.append(df)
+        per_team.append(df.with_columns(team=pl.lit(teams[0] if teams and len(team_sets) > 1 else None, pl.Utf8)))
         for k, v in e.items():
             edge[k] = pl.concat([edge[k], v]).unique() if k in edge else v
 
-    answers = per_team[0]
+    answers = per_team[0].drop("team")
     if len(per_team) > 1:  # teams_all: valid for every listed team; sum the stints
         keep = set.intersection(*(set(d["player_id"].to_list()) for d in per_team))
         answers = (pl.concat([d.filter(pl.col("player_id").is_in(list(keep))) for d in per_team])
                    .group_by("player_id").agg(
                        pl.col("ctx_seasons").sum(), pl.col("ctx_games").sum(), pl.col("ctx_qb_starts").sum(),
                        pl.col("first_season").min(), pl.col("last_season").max(),
-                       pl.col("bases").explode().unique(), pl.col("pre1950_qb").any()))
+                       pl.col("bases").explode().unique(), pl.col("pre1950_qb").any(),
+                       # per-team stints for two-team association: A = max(A_team1, A_team2) (§7)
+                       pl.struct("team", "ctx_seasons", "ctx_qb_starts", "ctx_games").alias("per_team")))
     if trait_ids is not None:
         answers = answers.filter(pl.col("player_id").is_in(list(trait_ids)))
 
