@@ -8,7 +8,7 @@ Tables produced
   qb_starts        starting QB per team-game (1999+)
   player_awards    long table: player_id, award, season
   player_honors    pro bowls, all-pro, HOF, award counts, pageviews
-  aliases          generated + data/aliases.csv
+  aliases          generated from nflverse name fields
   coverage         per-season data availability report
 """
 
@@ -307,12 +307,9 @@ def _aliases(con, log) -> None:
         for a, kind in cands:
             if a and a.strip():
                 rows.append((pid, a.strip(), norm_name(a), kind))
-    manual = pl.read_csv(DATA_DIR / "aliases.csv", infer_schema_length=0)
-    for pid, alias, _ in manual.iter_rows():
-        rows.append((pid, alias, norm_name(alias), "manual"))
     df = pl.DataFrame(rows, schema={"player_id": pl.Utf8, "alias": pl.Utf8, "alias_norm": pl.Utf8, "kind": pl.Utf8}, orient="row").unique()
     write_table(con, "aliases", df)
-    log(f"  {df.height} aliases ({manual.height} manual)")
+    log(f"  {df.height} aliases")
 
 
 # ----------------------------------------------------------------- coverage

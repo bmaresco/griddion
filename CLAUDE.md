@@ -79,7 +79,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 
 - Do **not** scrape Pro Football Reference, StatMuse, ESPN, NFL.com, or Yahoo. They are for manual spot-checks only.
 - Do **not** use Pro Football Reference data or old NFL.com scrapes from any source (e.g. `zackthoutt/nfl-player-stats`). Licensing is unclear. (Using the PFR *ID string* from Wikidata purely as a join key is fine.)
-- **Aliases:** generated from nflverse name fields (full name, first/last, common short forms), plus a hand-maintained `data/aliases.csv` for nicknames and misspellings.
+- **Aliases:** generated from nflverse name fields only (display name, legal first + last, common first name + last, last name). No hand-maintained nickname list in v1.
 
 ### Coverage (confirmed in step 1)
 
@@ -154,8 +154,62 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 | Stat | best qualifying season's stat · season | `1,871 yds · 2015` |
 | Award | season(s) won | `Won 2011` |
 
-- Seasons render as `2009–16` (single season `2008`).
+- Seasons render as `2009–16` (single season `2008`; full years when the century changes, `1999–2004`). Counts are singular at 1 (`1 start`).
+- **Games are "complete"** for a stint when every counted season is 2013+ (snap counts), or 1999+ for QB/RB/WR/TE (stat rows track their appearances). Otherwise the line uses seasons.
 - Games aren't available before 1999 (all positions) or 1999–2012 for players with no recorded stat (§4). Where a stint's games are incomplete, the line falls back to seasons: `11 seasons · 1974–84`. Pre-1950 QBs (no starts) use the same fallback.
+
+### Published files (the contract the game UI reads)
+
+`uv run publish build` writes `dist/` (not committed; deployed with the site). `format` is `1` in every file; bump it on any breaking change.
+
+**`dist/schedule.json`** — which drive is when.
+```json
+{ "format": 1, "launch_date": "2027-01-05",
+  "drives": [ { "drive": 1, "date": "2027-01-05", "file": "drives/1.json" }, … ] }
+```
+The UI picks today's drive by the viewer's local date: `drive = (today − launch_date).days + 1` (§9).
+
+**`dist/drives/<n>.json`** — one drive: 7 prompts with their full answer banks.
+```json
+{ "format": 1, "drive": 1, "date": "2027-01-05",
+  "data_version": "2026-11-08T16:30:22", "thresholds_frozen_at": "2026-11-08",
+  "prompts": [ {
+      "slot": 1, "id": "d01-1",
+      "text": "Name a Browns QB",
+      "subtitle": "All seasons (franchise history) · QBs must have started a regular-season game",
+      "type": "team", "tier_group": "other", "answer_count": 69,
+      "ykb_kid": null, "botched_trick_play": null,
+      "answers": [ {
+          "id": "00-0034855", "name": "Baker Mayfield", "tier": "Starter",
+          "context": "59 starts · 2018–21",
+          "names": ["Baker Mayfield"], "last_names": ["Mayfield"], "r": 0.631 }, … ] }, … ] }
+```
+- `answers` are sorted by `r` (R′) descending: the formula's order, most recallable first.
+- `tier` is one of Starter · Backup · Hidden Gem · Sleeper Pick · YKB Kid · Botched Trick Play (the last two only where the prompt sets `ykb_kid` / `botched_trick_play`).
+- `names` = every full-name form to match on; `last_names` = last-name forms. The UI adds first-name variants from `matching.json`.
+- `id` is the stable player id used in answer logging (§9).
+
+**`dist/game.json`** — scoring and drive rules (§2, §9).
+```json
+{ "format": 1,
+  "tiers": { "Starter": { "points": 10, "yards": 2, "square": "⬜" }, …, "Incomplete": { "points": 0, "yards": 0, "square": "⬛" } },
+  "drive": { "start_yardline": 25, "touchdown_yards": 75, "trail": [17, 21], "win": [24, 21],
+             "clock_start_seconds": 175, "seconds_per_play": 25, "plays": 7 } }
+```
+
+**`dist/matching.json`** — shared matcher data (§9 answer matching).
+```json
+{ "format": 1,
+  "first_name_groups": [ ["michael", "mike", "mikey"], … ],
+  "edit_budget": [ { "max_chars": 3, "edits": 0 }, { "max_chars": 6, "edits": 1 }, { "max_chars": 12, "edits": 2 }, { "max_chars": null, "edits": 3 } ],
+  "all_player_names": { "Andy Dalton": ["00-0027973"], … } }
+```
+`all_player_names` (~2 MB raw, much smaller gzipped) lets the UI reject a real player who isn't valid for the prompt, and stop a typo from snapping to a valid answer when another real player is at least as close. Names are compared after normalization (lowercase, accents and punctuation removed, suffixes like Jr./III dropped, runs of initials joined: `Y. A.` → `ya`), exactly as `names.norm_name`.
+
+### Scheduling and publish flow
+- **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
+- **`uv run publish build`** exports every scheduled drive. It refuses to publish a drive with any prompt under 25 answers (`--force` overrides) and warns on prompts with no YKB Kid chosen.
+- **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
 - **< 25 valid answers → hard stop.** Widen or drop the prompt.
@@ -317,11 +371,18 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 
 ## 9. Version 1 scope
 
-**In:** daily set of prompts, same for everyone; timer per prompt; fuzzy matching with alias support; scoring and tiers; All Answers screen; pick stats; share; streaks and W–L record in local storage; anonymous answer logging; ~14 days of prompts queued at launch.
+**In:** daily set of prompts, same for everyone; timer per prompt; answer matching (below); scoring and tiers; All Answers screen; pick stats; share; streaks and W–L record in local storage; anonymous answer logging; ~14 days of prompts queued at launch.
+
+**Answer matching** (reference implementation: `src/football_trivia/matching.py`; the UI ports it)
+- Matches on **full names** (display, legal first + last, common first name + last), **first-name variants** (Mike/Michael, Pat/Patrick, Bill/William, …), **unique last names** ("Mahomes" → Patrick Mahomes), and **typo tolerance** (Damerau-Levenshtein; allowed edits by length: ≤ 3 chars 0, ≤ 6 chars 1, ≤ 12 chars 2, longer 3).
+- **No nickname list in v1** ("Megatron", "T.O." don't match).
+- A real player who isn't valid for the prompt is rejected, including when a typo is at least as close to him as to any valid answer.
+- **Ambiguous last name within a prompt:** the UI asks for a first name ("Which Smith?") instead of guessing. The same applies when a typo ties between two valid answers.
+- Measured on the 14-day draft (one random typo per answer, 9,291 answers): 98.6% matched the right player, 0 the wrong one, 0.2% ambiguous, 1.3% rejected.
 
 **All Answers screen**
 - Unlocks after the 7th play. Tabs **P1–P7**, one per prompt.
-- Scrollable list per prompt, sortable by **tier** or **A–Z**, with **search** (alias-aware, using the same matcher as answer entry).
+- Scrollable list per prompt, sortable by **tier** or **A–Z**, with **search** (same matcher as answer entry: names, first-name variants, last names, typos).
 - **Your pick** and the **YKB Kid** are pinned at the top.
 - Each row shows the player's name, the **context line** (§6 answer bank export), and **pick stats**.
 
@@ -353,7 +414,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **TD before play 7:** all 7 plays are still played and scored. The ball stays in the end zone, the remaining plays show as running out the clock, and the result reads `TOUCHDOWN on P<n>`.
 
 **Drive, streak, record**
-- **Drive #** = days since launch, the same for everyone.
+- **Drive #** = days since launch, the same for everyone. **Launch day is Drive #1** (`(date − launch_date).days + 1`).
 - **Streak** = consecutive days played. A separate **W–L record**. Both in local storage.
 
 **Anonymous answer logging**
@@ -371,7 +432,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 2. Step 1 `build_answers` + `/probe`
 3. Step 2 `score_answers` + games-fallback comparison test (QBs)
 4. Threshold calibration on ~20 prompts; freeze values
-5. Answer matching (aliases, fuzzy)
+5. Answer matching (full names, first-name variants, unique last names, typo tolerance)
 6. Game UI
 7. Prompt scheduling + publish flow
 

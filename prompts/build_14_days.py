@@ -22,7 +22,7 @@ def team(t, pos, smin=None, sub=None):
     return ("team", f, sub)
 
 def div(d, pos):
-    return ("team", {"division": d, "position": pos, "season_min": 2002}, f"2002–2026 seasons · {QB if pos == 'QB' else G}")
+    return ("era", {"division": d, "position": pos, "season_min": 2002}, f"2002–2026 seasons · {QB if pos == 'QB' else G}")
 
 def two(a, b, pos, smin=None):
     f = {"teams_all": [a, b]}

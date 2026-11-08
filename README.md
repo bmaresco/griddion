@@ -10,6 +10,10 @@ Build order step 1: **`refresh`**, the local data cache. Everything downstream
 uv run refresh                         # full pull + derive (~first run: 20-40 min, mostly pageviews)
 uv run refresh --skip pageviews        # weekly in-season roster refresh
 uv run refresh --only build            # re-derive from cached raw tables, no network
+uv run probe '{"text": "Name a Bears QB", "filters": {"team": "CHI", "position": "QB"}}'
+uv run publish schedule --launch YYYY-MM-DD   # once, from prompts/prompts_14_days.jsonl
+uv run publish diff                            # weekly: reports/diff_<date>.md
+uv run publish build                           # dist/ for the game UI (format in CLAUDE.md §6)
 uv run pytest
 ```
 
@@ -38,7 +42,7 @@ Pageviews are incremental: after the first run only new months are fetched.
 | `qb_list_checks` | team × season | pre-1999 seasons whose listed starts don't add up to games played |
 | `player_awards` | player × award × season | mvp, opoy, dpoy, oroy, droy, roy, afl_mvp, comeback, sb_mvp, sb_champ |
 | `player_honors` | player | pro bowls, all-pro 1st/2nd, AFL all-star, HOF, lifetime pageviews |
-| `aliases` | player × alias | display, first_last, common_first_last, last_only, + `data/aliases.csv` |
+| `aliases` | player × alias | display, first_last, common_first_last, last_only (generated from nflverse names) |
 | `team_franchises` | code × season range | from `data/team_franchises.csv` — see below |
 | `coverage` | season | data-availability report (printed at the end of every refresh) |
 

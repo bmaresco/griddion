@@ -4,14 +4,15 @@ Matches what a player typed to one valid answer of the prompt, or says why not.
 This is the reference implementation; the game UI ports the same rules.
 
 Order (first rule that decides wins):
-  1. exact full name in the answer bank (any alias: display, legal, common first name,
-     first-name variants such as Mike/Michael, manual aliases)  -> valid
+  1. exact full name in the answer bank (display, legal, common first name, and
+     first-name variants such as Mike/Michael)                 -> valid
   2. exact last name, unique in the bank ("Mahomes")            -> valid
   3. exact full name of a real player who is NOT in the bank    -> invalid (not_valid_answer)
   4. typo tolerance against bank names (Damerau-Levenshtein,
      allowed edits grow with length), unique best match         -> valid (fuzzy)
   5. same, but a non-bank player is at least as close           -> invalid
-  6. several bank players tie at any step                       -> ambiguous (ask for more)
+  6. several bank players tie at any step                       -> ambiguous: the UI asks for a
+     first name ("Which Smith?")
   otherwise                                                      -> invalid (no_match)
 """
 
@@ -21,8 +22,8 @@ from dataclasses import dataclass, field
 
 from .names import norm_name
 
-# first-name variant groups (bidirectional). Kept small and common; nicknames that aren't
-# first-name forms ("Megatron", "T.O.") go in data/aliases.csv.
+# first-name variant groups (bidirectional). Kept small and common. Nicknames that aren't
+# first-name forms ("Megatron", "T.O.") are out of scope for v1 (spec §9).
 NAME_GROUPS = [
     {"michael", "mike", "mikey"}, {"christopher", "chris"}, {"joshua", "josh"}, {"matthew", "matt"},
     {"joseph", "joe", "joey"}, {"nicholas", "nick"}, {"benjamin", "ben"}, {"samuel", "sam", "sammy"},
@@ -101,8 +102,7 @@ class Match:
 class Matcher:
     """One matcher per prompt. `bank` = {player_id: [(alias, kind)]} for the valid answers,
     kind as in the aliases table ('last_only' goes to the last-name index; everything else is
-    a full name, and a one-word manual alias like "Megatron" matches exactly). A bare string
-    is treated as a last name if it's one word, else a full name.
+    a full name). A bare string is treated as a last name if it's one word, else a full name.
     `others` = {alias_norm: {player_ids}} for full names of every player (to spot real
     players who aren't valid for this prompt)."""
 
