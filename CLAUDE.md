@@ -130,13 +130,27 @@ All components are 0–1. Every default below has a written reason. Change a num
 
 ### Fame, F (per player, same for every prompt)
 ```
-F = 0.60·pct(pageviews) + 0.25·pct(honors) + 0.15·pct(career_length)
+F = 0.60·s_pv + 0.25·s_honors + 0.15·s_career
+
+s_pv     = clamp( (log10(pv24) − log10(30)) / (log10(300000) − log10(30)), 0, 1 )
+s_honors = clamp( honors_points / HONORS_CAP, 0, 1 )
+s_career = clamp( seasons / 15, 0, 1 )
 ```
-- `pageviews` = lifetime Wikipedia pageviews (log-scaled before ranking). **Main signal** for how known a player is.
-- `honors` = Pro Bowls + All-Pro (weighted higher) + Hall of Fame (weighted highest). Protects pre-internet stars whose pageviews undercount their fame. **TODO:** set exact weights with a written reason.
-- `career_length` = seasons played or starts. Separates a 10-year starter from a one-season player.
-- `pct()` = percentile across all players in the database.
+- `pv24` = **average monthly** enwiki pageviews (user agent) over the **most recent 24 complete months**. **Main signal** for how known a player is. No Wikipedia article → `s_pv = 0`.
+- `honors_points` = Pro Bowls + All-Pro (weighted higher) + Hall of Fame (weighted highest). Protects pre-internet stars whose pageviews undercount their fame. **TODO:** set exact weights with a written reason.
+- `seasons` = distinct seasons on a regular-season roster. Separates a 10-year starter from a one-season player.
 - Decision: college or off-field fame in pageviews (e.g. a famous college QB) is **kept**. Fans who know the player are more likely to recall his NFL stops too.
+
+**Decision: fixed linear scales, not percentile ranks.** A percentile ranks against ~35k players back to 1920, 27% of whom have zero pageviews, so every recognizable player was squeezed into 0.90–1.00 (Brady 1.00, Kyle Orton 0.975), and fame stopped separating answers. A fixed scale keeps the size of the gaps. Recorded values:
+
+| Scale | Value | Reason |
+|---|---|---|
+| `pv24` floor | **30 / month** | ≈1 view/day, crawler-noise level: a player here is effectively unknown. ~8% of players with articles sit at or below it. |
+| `pv24` ceiling | **300,000 / month** | ≈10k views/day, the current top of the distribution (Brady, Kelce, Josh Allen ≈ 320–340k). Separating the very top doesn't change recall, so anything above clamps to 1. |
+| `HONORS_CAP` | **median `honors_points` of Hall of Fame inductees** in the DB (value computed and recorded here once the weights are set) | A typical Hall of Fame career is the natural "maximum fame from honors". Half of HOFers clamp to 1, which is intended. |
+| career cap | **15 seasons** | The 99th percentile of careers in the DB (1.1% of players reach it). Longer careers don't add recall. |
+
+**Decision: 24-month pageview window, not lifetime.** Pageview data only starts in July 2015, so lifetime totals undercounted anyone who retired before or during the window (Kyle Orton, retired 2014, had fewer lifetime views than Chase Daniel). A recent-window average puts every player on the same footing. The boost active players get is **accepted as real current recall**. The floor and ceiling above were picked for this metric (monthly average, so much smaller than lifetime totals).
 
 ### Association, A (per player, per prompt)
 ```
@@ -239,5 +253,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Honors weights within F
 - Per-position production metric for `peak`
 - Wikipedia QB-list ingestion + cross-check with nflverse
+- Pageviews: sum views across an article's previous titles (page moves). The API counts by exact title only, so views before a rename are lost (e.g. "Chris Chandler" → "Chris Chandler (American football)", Nov 2022)
+- Seasons on roster: decide which roster statuses count. nflverse season rosters include practice-squad/reserve players from 2016 (roster count jumps from ~2,060 to ~3,060), which would inflate `seasons` for both career length and non-QB association
 - Games-fallback approval for QBs (pending comparison test)
 - Game title
