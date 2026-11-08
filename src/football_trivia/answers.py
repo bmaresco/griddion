@@ -14,6 +14,7 @@ Filters
     league          "NFL" | "AFL"
     season_min/max  inclusive
     award           "mvp" or ["oroy", "mvp"] ("won X and Y"), AP only
+    award_any       ["oroy", "droy"]: won any of them ("X or Y", the union of winners), AP only
     stat_threshold  {"stat": "receiving_yards", "min": 1500} in one regular season (1999+)
 
 Validity (spec §3): QBs need a regular-season start in context (pre-1950: active roster
@@ -65,7 +66,7 @@ class Prompt:
     @property
     def is_trait(self) -> bool:
         f = self.filters
-        return self.type == "trait" or ("award" in f or "stat_threshold" in f) and not (
+        return self.type == "trait" or ("award" in f or "award_any" in f or "stat_threshold" in f) and not (
             "team" in f or "teams_all" in f or "conference" in f or "division" in f)
 
 
@@ -119,12 +120,15 @@ def _context_where(f: dict, teams: list[str] | None, alias: str = "t") -> tuple[
     return " AND ".join(w), warn
 
 
+AWARD_KEYS = {"award", "award_any"}  # either makes a prompt an award prompt (§7 award group)
+
+
 # ---------------------------------------------------------- build_answers
 
 def build_answers(con, prompt: Prompt) -> Result:
     f = prompt.filters
     unknown = set(f) - {"team", "teams_all", "position", "conference", "division", "league",
-                        "season_min", "season_max", "award", "stat_threshold"}
+                        "season_min", "season_max", "award", "award_any", "stat_threshold"}
     if unknown:
         raise ValueError(f"unknown filters: {sorted(unknown)}")
     warnings: list[str] = []
@@ -136,7 +140,7 @@ def build_answers(con, prompt: Prompt) -> Result:
             warnings.append(f"stat prompt: season_min set to {STATS_FIRST_SEASON} (season stats start then)")
         if "1999" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == STATS_FIRST_SEASON:
             warnings.append('stat prompt must state the date in its text or subtitle, e.g. "(since 1999)"')
-    trait_ids = _trait_players(con, f, warnings) if ("award" in f or "stat_threshold" in f) else None
+    trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS & f.keys() or "stat_threshold" in f) else None
     if prompt.is_trait:
         answers = _trait_answers(con, trait_ids, f)
         return Result(prompt, answers, {}, warnings + _range_warnings(answers.height))
@@ -236,7 +240,8 @@ def _with_career_and_names(con, answers: pl.DataFrame) -> pl.DataFrame:
 def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
     smin, smax = int(f.get("season_min", 0)), int(f.get("season_max", 9999))
     sets = []
-    for award in _as_list(f.get("award", [])):
+
+    def winners(award: str) -> set[str]:
         a = award.lower()
         first = AP_FIRST_SEASON.get(a)
         if first is None:
@@ -248,7 +253,12 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
         undated = con.execute("SELECT count(*) FROM player_awards WHERE award = ? AND season IS NULL", [a]).fetchall()[0][0]
         if undated:
             warnings.append(f"{undated} {a} rows have no season on Wikipedia and were skipped")
-        sets.append(ids)
+        return ids
+
+    for award in _as_list(f.get("award", [])):  # "won X and Y": every award
+        sets.append(winners(award))
+    if "award_any" in f:  # "X or Y": the union of winners
+        sets.append(set().union(*(winners(a) for a in _as_list(f["award_any"]))))
     if st := f.get("stat_threshold"):
         stat = STATS.get(st["stat"])
         if stat is None:

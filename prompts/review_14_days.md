@@ -39,7 +39,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 5 | 4 | Name a player who played for the Steelers and the Browns | 79 | 4 · 33 · 31 · 10 | — |
 | 5 | 5 | Name an AFC WR from the 1990s | 322 | 11 · 82 · 122 · 106 | — |
 | 5 | 6 | Name a DB with a 5+ interception season | 227 | 7 · 34 · 61 · 124 | — |
-| 5 | 7 | Name an AP Comeback Player of the Year | 27 | 5 · 12 · 8 · 1 | tight |
+| 5 | 7 | Name an AP Rookie of the Year (offense or defense) | 119 | 4 · 22 · 40 · 52 | — |
 | 6 | 1 | Name a Steelers LB | 192 | 12 · 50 · 76 · 53 | — |
 | 6 | 2 | Name an AFC West TE | 176 | 9 · 58 · 77 · 31 | — |
 | 6 | 3 | Name a player who played for the Cowboys and the Giants | 63 | 7 · 23 · 29 · 3 | — |
@@ -74,7 +74,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 10 | 4 | Name a player who played for the Bengals and the Steelers | 40 | 2 · 25 · 9 · 3 | — |
 | 10 | 5 | Name an NFC QB from the 1990s | 96 | 13 · 38 · 21 · 23 | — |
 | 10 | 6 | Name a TE with a 7+ receiving TD season | 70 | 7 · 16 · 32 · 14 | — |
-| 10 | 7 | Name an AP Comeback Player of the Year | 27 | 5 · 12 · 8 · 1 | tight |
+| 10 | 7 | Name an AP MVP or Offensive Player of the Year | 69 | 6 · 25 · 31 · 6 | — |
 | 11 | 1 | Name a 49ers QB | 50 | 10 · 15 · 9 · 15 | — |
 | 11 | 2 | Name a Vikings WR | 155 | 12 · 41 · 62 · 39 | — |
 | 11 | 3 | Name a player who played for the Falcons and the Panthers | 69 | 2 · 24 · 34 · 8 | — |

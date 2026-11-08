@@ -52,6 +52,8 @@ TIER_INFO = {
 for v in TIER_INFO.values():
     v["yards"] = v["points"] // 5
 
+AWARD_LABEL = {"mvp": "MVP", "opoy": "OPOY", "dpoy": "DPOY", "oroy": "OROY", "droy": "DROY", "comeback": "CPOY"}
+
 STAT_UNIT = {"passing_yards": "yds", "rushing_yards": "yds", "receiving_yards": "yds", "scrimmage_yards": "yds",
              "passing_tds": "TD", "rushing_tds": "TD", "receiving_tds": "TD", "receptions": "rec",
              "sacks": "sacks", "interceptions": "INT", "field_goals": "FG"}
@@ -139,13 +141,26 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                   AND season BETWEEN ? AND ? GROUP BY 1""",
                 awards + [int(f.get("season_min", 0)), int(f.get("season_max", 9999))]).fetchall()
             return {pid: "Won " + ", ".join(str(s) for s in seasons) for pid, seasons in rows}
+        if "award_any" in f:  # "MVP 2007, 2010 · OPOY 2007": which award(s), in the prompt's order
+            awards = [a.lower() for a in _as_list(f["award_any"])]
+            rows = con.execute(f"""
+                SELECT player_id, award, list(DISTINCT season ORDER BY season) FROM player_awards
+                WHERE player_id IN (SELECT player_id FROM _ids) AND award IN ({', '.join('?' * len(awards))})
+                  AND season BETWEEN ? AND ? GROUP BY 1, 2""",
+                awards + [int(f.get("season_min", 0)), int(f.get("season_max", 9999))]).fetchall()
+            parts: dict[str, dict[str, list[int]]] = {}
+            for pid, a, seasons in rows:
+                parts.setdefault(pid, {})[a] = seasons
+            return {pid: " · ".join(f"{AWARD_LABEL.get(a, a.upper())} {', '.join(map(str, d[a]))}"
+                                    for a in awards if a in d) for pid, d in parts.items()}
         if st := f.get("stat_threshold"):
             expr, unit = STATS[st["stat"]], STAT_UNIT[st["stat"]]
             rows = con.execute(f"""
-                SELECT player_id, arg_max(season, v), max(v) FROM (
-                    SELECT player_id, season, sum({expr}) v FROM raw_player_week
-                    WHERE season_type = 'REG' AND player_id IN (SELECT player_id FROM _ids)
-                      AND season BETWEEN ? AND ? GROUP BY 1, 2)
+                SELECT player_id, min(season) FILTER (WHERE v = mv), max(v) FROM (  -- ties: earliest season
+                    SELECT *, max(v) OVER (PARTITION BY player_id) mv FROM (
+                        SELECT player_id, season, sum({expr}) v FROM raw_player_week
+                        WHERE season_type = 'REG' AND player_id IN (SELECT player_id FROM _ids)
+                          AND season BETWEEN ? AND ? GROUP BY 1, 2))
                 WHERE v >= ? GROUP BY 1""", [int(f.get("season_min", 1999)), int(f.get("season_max", 9999)), st["min"]]).fetchall()
             fmt = lambda v: f"{v:,.1f}".rstrip("0").rstrip(".") if v != int(v) else f"{int(v):,}"
             return {pid: f"{fmt(v)} {unit} · {season}" for pid, season, v in rows}
@@ -183,7 +198,7 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                 n = rows["season"].n_unique()
                 out[pid] = f"{n} season{'s' * (n != 1)} · {span}"
         else:  # era / conference / division: "Colts, Bills · 1990–97"
-            order = rows.group_by("franchise").agg(pl.col("season").min()).sort("season")["franchise"].to_list()
+            order = rows.group_by("franchise").agg(pl.col("season").min()).sort(["season", "franchise"])["franchise"].to_list()
             names = [FRANCHISE_NAMES.get(t, t) for t in order]
             label = ", ".join(names[:3]) + (f" +{len(names) - 3}" if len(names) > 3 else "")
             out[pid] = f"{label} · {_span(rows['season'].min(), rows['season'].max())}"

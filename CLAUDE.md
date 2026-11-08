@@ -116,6 +116,7 @@ Supported filter types (build as a reusable library):
 - `team`, `teams_all` (played for every listed team), `position`, `conference`, `division`
 - `season_min` / `season_max` (eras, decades)
 - `award` (one or more; "won X and Y")
+- `award_any` (two or more; "won X or Y": the union of winners, each award from its own AP start season). The prompt text must name every award and say "or" (`check_text.py`). Award prompts either way (§7 award group).
 - `stat_threshold` (e.g. receiving yards ≥ 1500 in a single season)
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
@@ -154,6 +155,7 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 | Era / conference / division | teams in context · seasons | `Colts, Bills · 1990–97` |
 | Stat | best qualifying season's stat · season | `1,871 yds · 2015` |
 | Award | season(s) won | `Won 2011` |
+| Award, either (`award_any`) | each award won · seasons | `MVP 2007, 2010 · OPOY 2007` |
 
 - Seasons render as `2009–16` (single season `2008`; full years when the century changes, `1999–2004`). Counts are singular at 1 (`1 start`).
 - **Games are "complete"** for a stint when every counted season is 2013+ (snap counts), or 1999+ for QB/RB/WR/TE (stat rows track their appearances). Otherwise the line uses seasons.
@@ -212,6 +214,7 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
 - **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers or with fewer than 3 Sleeper Picks besides the YKB Kid (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
 - **Frozen drives (decided 2026-11-08): a drive is frozen once it goes live (00:00 ET on its date). Never regenerate a live or past drive.** Drives up to `frozen_through` in `prompts/schedule.json` are frozen too, before their date (currently `1`: Drive 1 stays exactly as published). `publish build` and `publish diff` read frozen drives back from `public/days/<n>.json` and never rewrite them, even with `--force`; their YKB Kids still count for the 14-day window. `publish schedule` refuses to change a frozen drive. So a rule or threshold change reaches only unfrozen drives: Drive 1's AP MVP (d01-7) keeps the tiers from before award `F = s_pv`.
+- **AP Comeback Player of the Year is retired from the award rotation (decided 2026-11-08).** Its pool is 27 winners (1998–2025), too small to meet the ≥ 3-Sleeper rule under award `F = s_pv` (Drive 5: 1 Sleeper, Drive 10: 2). Don't schedule it; `check_text.py` flags it. Its two slots (D5.7, D10.7) went to the first two "either award" candidates that passed both publish rules, probed in this order: ROY (offense or defense) 119 answers · 4 · 22 · 40 · 52+YKB ✅ → **D5.7**; MVP or OPOY 69 · 6 · 25 · 31 · 6+YKB ✅ → **D10.7**; DPOY or DROY 93 · 3 · 19 · 29 · 41+YKB ✅ (unused); AFC / NFC DPOY winners (award-season team's conference) were not needed: the data exists, but the NFC side has only 18 winners (< 25). Comeback stays in the award calibration set: the frozen thresholds were computed with it, and changing the set would mean recalibrating.
 - **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
@@ -325,7 +328,7 @@ Set once, objectively:
 
 | Group | Prompts | Calibration set |
 |---|---|---|
-| award | trait prompts with an `award` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
+| award | trait prompts with an `award` or `award_any` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
 | stat | trait prompts with a `stat_threshold` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
 | other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
 

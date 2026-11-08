@@ -11,7 +11,7 @@ import math
 
 import polars as pl
 
-from .answers import Prompt, Result, _as_list, _context_where
+from .answers import AWARD_KEYS, Prompt, Result, _as_list, _context_where
 from .db import DATA_DIR
 
 # §7 Fame
@@ -179,7 +179,7 @@ def threshold_kind(prompt: Prompt) -> str:
     and award winners are a much more famous pool than stat qualifiers."""
     if not prompt.is_trait:
         return "other"
-    return "award" if "award" in prompt.filters else "stat"
+    return "award" if AWARD_KEYS & prompt.filters.keys() else "stat"
 
 
 def _tier_expr(kind: str) -> pl.Expr:

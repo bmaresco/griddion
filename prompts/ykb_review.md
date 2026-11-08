@@ -38,7 +38,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem, skipping
 | 5 | 2026-11-13 | 4 | Name a player who played for the Steelers and the Browns | David Dunn | Steelers 1998 · Browns 1999 | default | 00-0004634 |
 | 5 | 2026-11-13 | 5 | Name an AFC WR from the 1990s | Brett Perriman | Dolphins · 1997 | default | 00-0012803 |
 | 5 | 2026-11-13 | 6 | Name a DB with a 5+ interception season | Ray Buchanan | 6 INT · 2000 | default | 00-0002166 |
-| 5 | 2026-11-13 | 7 | Name an AP Comeback Player of the Year | Joe Johnson | Won 2000 | default | 00-0008541 |
+| 5 | 2026-11-13 | 7 | Name an AP Rookie of the Year (offense or defense) | Carnell Williams | OROY 2005 | default | 00-0023440 |
 | 6 | 2026-11-14 | 1 | Name a Steelers LB | Aaron Jones | 5 seasons · 1988–92 | default | 00-0008676 |
 | 6 | 2026-11-14 | 2 | Name an AFC West TE | Lance Kendricks | Chargers · 2019 | default | 00-0027985 |
 | 6 | 2026-11-14 | 3 | Name a player who played for the Cowboys and the Giants | Eric Smith | Cowboys 2020 · Giants 2019 | default | 00-0033414 |
@@ -73,7 +73,7 @@ Default (§2): highest-fame Sleeper Pick, else highest-fame Hidden Gem, skipping
 | 10 | 2026-11-18 | 4 | Name a player who played for the Bengals and the Steelers | Jamon Meredith | Bengals 2014 · Steelers 2011 | default | 00-0027112 |
 | 10 | 2026-11-18 | 5 | Name an NFC QB from the 1990s | Bernie Kosar | Cowboys · 1993 | default | 00-0009427 |
 | 10 | 2026-11-18 | 6 | Name a TE with a 7+ receiving TD season | Devin Funchess | 8 TD · 2017 | default | 00-0032055 |
-| 10 | 2026-11-18 | 7 | Name an AP Comeback Player of the Year | Tedy Bruschi | Won 2005 | default | 00-0002123 |
+| 10 | 2026-11-18 | 7 | Name an AP MVP or Offensive Player of the Year | Earl Morrall | MVP 1968 | default | MOR305100 |
 | 11 | 2026-11-19 | 1 | Name a 49ers QB | Sam Darnold | 1 start · 2023 | default | 00-0034869 |
 | 11 | 2026-11-19 | 2 | Name a Vikings WR | Gary Ballman | 1 season · 1973 | default | pfr:BallGa00 |
 | 11 | 2026-11-19 | 3 | Name a player who played for the Falcons and the Panthers | Omar Gaither | Falcons 2013 · Panthers 2011 | default | 00-0024382 |
