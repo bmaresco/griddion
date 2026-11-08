@@ -38,7 +38,8 @@ let answersSort: 'tier' | 'az' = 'tier';
 let answersQuery = '';
 let tick = 0;
 let submitting = false;
-let picker: { candidates: Answer[]; label: string } | null = null;
+let overlay: { kind: 'picker'; typed: string } | { kind: 'confirm'; typed: string; answer: Answer } | null = null;
+let expiring = false;
 
 const game = () => store().game!;
 const answerById = (p: Prompt, id: string | null) => (id ? p.answers.find((a) => a.id === id) : undefined);
@@ -154,6 +155,8 @@ function startPlay() {
   const g = game();
   g.phase = 'play';
   g.deadline = now() + RULES.secondsPerPlay * 1000;
+  overlay = null;
+  expiring = false;
   save();
   render();
 }
@@ -184,6 +187,7 @@ function playScreen() {
     <form class="callit" id="callit" autocomplete="off">
       <label for="answer">CALL IT</label>
       <div class="row"><input id="answer" type="text" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type a player…" maxlength="60"><button type="submit" class="btn">SNAP</button></div>
+      <p class="flash" id="flash" role="status" aria-live="assertive"></p>
     </form>
     ${legend()}`;
   mount(`<div class="mini dot" id="mini" aria-hidden="true"><span class="upper" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div>` +
@@ -215,72 +219,123 @@ function updateTimer() {
   document.getElementById('timer')?.classList.toggle('low', secs <= 5);
   const txt = clockText(secs);
   for (const id of ['secs', 'minisecs']) { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; }
-  if (msLeft <= 0) {
-    stopTimer();
-    record({ typed: (document.getElementById('answer') as HTMLInputElement | null)?.value ?? '', playerId: null, name: null, tier: 'Incomplete', reason: 'timeout' });
-  }
+  if (msLeft <= 0) expire();
 }
 
-async function submit(typed: string) {
+const inputEl = () => document.getElementById('answer') as HTMLInputElement | null;
+const timeoutRec = (typed = ''): PlayRecord => ({ typed, playerId: null, name: null, tier: 'Incomplete', reason: 'timeout' });
+const validRec = (typed: string, a: Answer): PlayRecord => ({ typed, playerId: a.id, name: a.name, tier: a.tier, reason: 'valid' });
+
+/** Clock hit 0:00 (§9): an open "Did you mean" is accepted; otherwise whatever is typed is submitted once. */
+function expire() {
   const g = game();
-  if (submitting || g.phase !== 'play') return;
+  if (g.phase !== 'play' || expiring) return;
+  expiring = true;
+  stopTimer();
+  if (overlay?.kind === 'confirm') { const o = overlay; return record(validRec(o.typed, o.answer)); }
+  if (overlay?.kind === 'picker') return record(timeoutRec(overlay.typed)); // no valid answer chosen in time
+  submit(inputEl()?.value ?? '', true);
+}
+
+/** Run a guess through the matcher. Wrong guesses don't end the play unless the clock has run out. */
+async function submit(typed: string, timedOut = false) {
+  const g = game();
+  if (g.phase !== 'play' || overlay) return;
+  if (!timedOut && (submitting || expiring)) return;
   const p = day!.prompts[g.plays.length];
-  if (!typed.trim()) { record({ typed, playerId: null, name: null, tier: 'Incomplete', reason: 'empty' }); return; }
+  if (!typed.trim()) { if (timedOut) record(timeoutRec()); return; }
   submitting = true;
   try {
     const m = await matcherFor(p);
-    if (g.phase !== 'play') return; // timer ran out while loading
+    if (g.phase !== 'play' || (expiring && !timedOut)) return; // the clock ran out while loading; expire() handles it
     const r = m.match(typed);
     if (r.status === 'valid') {
       const a = answerById(p, r.playerId)!;
-      record({ typed, playerId: a.id, name: a.name, tier: a.tier, reason: 'valid' });
+      if (r.method === 'fuzzy' && !timedOut) showConfirm(typed, a);
+      else record(validRec(typed, a));
     } else if (r.status === 'ambiguous') {
+      if (timedOut) return record(timeoutRec(typed));
       const cands = r.candidates.map((id) => answerById(p, id)).filter((a): a is Answer => !!a);
       const last = (cands[0]?.name ?? typed).split(' ').filter((w) => !/^(jr|sr|ii|iii|iv|v)\.?$/i.test(w)).pop() ?? typed;
-      showPicker(cands, cands.every((c) => c.name === cands[0].name) ? `Which ${cands[0].name}?` : `Which ${last}?`);
-    } else {
+      showPicker(typed, cands, cands.every((c) => c.name === cands[0].name) ? `Which ${cands[0].name}?` : `Which ${last}?`);
+    } else if (timedOut) {
       const d = await loadMatchData();
       record({
         typed, playerId: r.playerId, name: r.playerId ? d.nameById.get(r.playerId) ?? null : null,
         tier: 'Incomplete', reason: r.method === 'not_valid_answer' ? 'not_valid_answer' : 'no_match',
       });
+    } else {
+      wrongGuess();
     }
   } finally {
     submitting = false;
   }
 }
 
-function showPicker(cands: Answer[], label: string) {
-  picker = { candidates: cands, label };
+let flashTimer = 0;
+function wrongGuess() {
+  const input = inputEl();
+  if (!input) return;
+  input.value = '';
+  input.focus({ preventScroll: true });
+  const row = input.closest('.row')!;
+  row.classList.remove('shake');
+  void (row as HTMLElement).offsetWidth; // restart the animation
+  row.classList.add('shake');
+  const fl = document.getElementById('flash')!;
+  fl.textContent = 'Not on the board';
+  fl.classList.add('show');
+  clearTimeout(flashTimer);
+  flashTimer = window.setTimeout(() => fl.classList.remove('show'), 1400);
+}
+
+function openOverlay(label: string, html: string): HTMLElement {
   const paper = document.querySelector('.wb .paper')!;
   const el = document.createElement('div');
   el.className = 'picker';
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-label', label);
-  el.innerHTML = `<h2 class="silk">${esc(label.toUpperCase())}</h2>
-    ${cands.map((a, k) => `<button type="button" class="pick" data-k="${k}"><b>${esc(a.name)}</b><span>${esc(a.context)}</span></button>`).join('')}
-    <button type="button" class="back">Not them, let me retype</button>`;
+  el.innerHTML = html;
   paper.appendChild(el);
+  return el;
+}
+
+function showPicker(typed: string, cands: Answer[], label: string) {
+  overlay = { kind: 'picker', typed };
+  const el = openOverlay(label, `<h2 class="silk">${esc(label.toUpperCase())}</h2>
+    ${cands.map((a, k) => `<button type="button" class="pick" data-k="${k}"><b>${esc(a.name)}</b><span>${esc(a.context)}</span></button>`).join('')}
+    <button type="button" class="back">Not them, let me retype</button>`);
   el.querySelectorAll<HTMLButtonElement>('.pick').forEach((b) => b.addEventListener('click', () => {
-    const a = cands[Number(b.dataset.k)];
-    closePicker();
-    record({ typed: (document.getElementById('answer') as HTMLInputElement).value, playerId: a.id, name: a.name, tier: a.tier, reason: 'valid' });
+    if (overlay?.kind !== 'picker') return;
+    record(validRec(typed, cands[Number(b.dataset.k)]));
   }));
-  el.querySelector('.back')!.addEventListener('click', closePicker);
+  el.querySelector('.back')!.addEventListener('click', () => closeOverlay(false));
   (el.querySelector('.pick') as HTMLButtonElement | null)?.focus();
 }
 
-function closePicker() {
-  picker = null;
+function showConfirm(typed: string, a: Answer) {
+  overlay = { kind: 'confirm', typed, answer: a };
+  const el = openOverlay(`Did you mean ${a.name}?`, `<h2 class="silk">DID YOU MEAN</h2>
+    <div class="pick" style="cursor:default;box-shadow:none"><b>${esc(a.name)}?</b><span>${esc(a.context)}</span></div>
+    <div class="btns"><button type="button" class="btn" id="yes">YES</button><button type="button" class="btn2" id="no">NO</button></div>`);
+  el.querySelector('#yes')!.addEventListener('click', () => { if (overlay?.kind === 'confirm') record(validRec(typed, a)); });
+  el.querySelector('#no')!.addEventListener('click', () => closeOverlay(true));
+  (el.querySelector('#yes') as HTMLButtonElement).focus();
+}
+
+/** Close a picker/confirmation and go back to guessing (the clock never stopped). */
+function closeOverlay(clear: boolean) {
+  overlay = null;
   document.querySelector('.picker')?.remove();
-  (document.getElementById('answer') as HTMLInputElement | null)?.focus();
+  const input = inputEl();
+  if (input) { if (clear) input.value = ''; input.focus({ preventScroll: true }); }
 }
 
 function record(rec: PlayRecord) {
   const g = game();
   if (g.phase !== 'play') return;
   stopTimer();
-  picker = null;
+  overlay = null;
   g.plays.push(rec);
   g.phase = 'result';
   g.deadline = null;
@@ -302,7 +357,7 @@ function resultScreen() {
   const scoredNow = before.tdPlay === null && after.tdPlay !== null;
   const valid = rec.reason === 'valid';
 
-  const headline = valid ? t.short + '!' : rec.reason === 'timeout' ? "TIME'S UP" : 'INCOMPLETE';
+  const headline = valid ? t.short + '!' : "TIME'S UP";
   const who = valid ? rec.name! : rec.reason === 'timeout' || rec.reason === 'empty' ? 'NO CALL' : rec.name ?? rec.typed;
   const playLine = `${t.play.toUpperCase()} · +${gain} YDS · +${t.points} PTS`;
   const screen = `<div class="screen dot">
@@ -318,11 +373,11 @@ function resultScreen() {
     const a = answerById(p, rec.playerId);
     ctx = `<b>${esc(rec.name)}</b>${esc(a?.context ?? '')}`;
   } else if (rec.reason === 'not_valid_answer') {
-    ctx = `<b>${esc(rec.name ?? rec.typed)}</b>Real player, but not a valid answer for this one. No gain.`;
+    ctx = `<b>${esc(rec.name ?? rec.typed)}</b>Real player, but not a valid answer for this one. Time ran out. No gain.`;
   } else if (rec.reason === 'no_match') {
-    ctx = `<b>“${esc(rec.typed.trim())}”</b>No player on the list matched that. No gain.`;
+    ctx = `<b>“${esc(rec.typed.trim())}”</b>Not on the board, and time ran out. No gain.`;
   } else if (rec.reason === 'timeout') {
-    ctx = `<b>Play clock hit zero.</b>No gain on the play.`;
+    ctx = `<b>Play clock hit zero.</b>No valid answer in time. No gain.`;
   } else {
     ctx = `<b>No call made.</b>No gain on the play.`;
   }
@@ -489,7 +544,7 @@ function render() {
     if (g.deadline !== null && g.deadline <= now()) {
       // timer ran out while the page was closed
       g.phase = 'play';
-      return record({ typed: '', playerId: null, name: null, tier: 'Incomplete', reason: 'timeout' });
+      return record(timeoutRec());
     }
     return playScreen();
   }
@@ -502,7 +557,7 @@ window.addEventListener('hashchange', () => { if (day) render(); });
 document.addEventListener('keydown', (e) => {
   if (!day || view !== 'game') return;
   const g = game();
-  if (e.key === 'Escape' && picker) { e.preventDefault(); closePicker(); return; }
+  if (e.key === 'Escape' && overlay) { e.preventDefault(); closeOverlay(overlay.kind === 'confirm'); return; }
   if (g.phase === 'result' && (e.key === 'Enter' || e.key === ' ') && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); advance(); }
 });
 

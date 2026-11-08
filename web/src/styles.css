@@ -117,6 +117,12 @@ button { font: inherit; color: inherit; }
 .ctx p { margin: 0; font-size: 17px; line-height: 1.25; }
 .ctx b { display: block; }
 
+/* wrong guess */
+.flash { margin: 0; min-height: 18px; font-weight: 700; font-size: 15px; color: var(--red); visibility: hidden; }
+.flash.show { visibility: visible; }
+.shake { animation: shake 0.36s steps(6,end) 1; }
+@keyframes shake { 0%,100% { transform: translateX(0) } 20%,60% { transform: translateX(-6px) } 40%,80% { transform: translateX(6px) } }
+
 /* name picker */
 .picker { position: absolute; inset: 0; background: var(--paper); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; z-index: 2; overflow-y: auto; }
 .picker h2 { margin: 0; font-size: 16px; }
