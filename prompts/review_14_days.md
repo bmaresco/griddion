@@ -70,7 +70,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 9 | 7 | Name an AP Offensive Rookie of the Year | 59 | 3 · 14 · 19 · 23 | — |
 | 10 | 1 | Name an Eagles TE | 42 | 4 · 17 · 17 · 4 | — |
 | 10 | 2 | Name an AFC North RB | 238 | 21 · 87 · 102 · 28 | — |
-| 10 | 3 | Name a skill player (RB/WR/TE) who played for the Seahawks and the Rams | 21 | 4 · 9 · 8 · 0 | zero Sleepers; tight |
+| 10 | 3 | Name a player who played for the Seahawks and the Rams | 68 | 5 · 33 · 22 · 8 | — |
 | 10 | 4 | Name a player who played for the Bengals and the Steelers | 68 | 3 · 28 · 27 · 10 | — |
 | 10 | 5 | Name an NFC QB from the 1990s | 96 | 13 · 38 · 21 · 24 | — |
 | 10 | 6 | Name a player with a 15+ sack season | 46 | 10 · 21 · 14 · 1 | — |

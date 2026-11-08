@@ -3,7 +3,7 @@
 Kept as code so the translation is reviewable: one tuple per prompt, in day/slot order.
 Revisions approved after the first probe: two-team prompts are "skill player" (RB/WR/TE) where
 that reaches 25 answers, otherwise any position; TE stat 1,000 -> 800 yds; QB rushing 500 -> 400 yds.
-Duplicates replaced: 13.3 Patriots+Jets -> Bills+Patriots, 10.3 Rams+Cardinals -> Seahawks+Rams (skill player).
+Duplicates replaced: 13.3 Patriots+Jets -> Bills+Patriots, 10.3 Rams+Cardinals -> Seahawks+Rams (any position; skill version had 21).
 """
 import json
 from pathlib import Path
@@ -109,7 +109,7 @@ DAYS = [
   ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
  [("Name an Eagles TE", team("PHI", "TE", 2000, f"2000–2026 seasons · {G}")),
   ("Name an AFC North RB", div("AFC North", "RB")),
-  ("Name a skill player (RB/WR/TE) who played for the Seahawks and the Rams", two("SEA", "LA", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Seahawks and the Rams", two("SEA", "LA", None)),
   ("Name a player who played for the Bengals and the Steelers", two("CIN", "PIT", None)),
   ("Name an NFC QB from the 1990s", era(1990, 1999, "QB", "NFC")),
   ("Name a player with a 15+ sack season", stat("sacks", 15)),
