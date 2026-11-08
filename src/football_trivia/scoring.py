@@ -1,7 +1,7 @@
 """Step 2 of the pipeline (spec §6-7): valid answers -> F, A, R, R', tier.
 
 All parameters live here, each with the spec section that gives its reason.
-Honors weights and HONORS_CAP are a proposal pending sign-off (§11).
+
 """
 
 from __future__ import annotations
@@ -17,14 +17,16 @@ from .db import DATA_DIR
 # §7 Fame
 W_PV, W_HONORS, W_CAREER = 0.60, 0.25, 0.15
 PV_FLOOR, PV_CEILING = 30, 300_000            # avg monthly views, last 24 months
-HONORS_WEIGHTS = {"pro_bowls": 1, "afl_all_star": 1, "all_pro_2nd": 1, "all_pro_1st": 2, "hof": 6}  # proposal
-HONORS_CAP = 20                                # median HOF honors points under HONORS_WEIGHTS (proposal)
+HONORS_WEIGHTS = {"pro_bowls": 1, "afl_all_star": 1, "all_pro_2nd": 1, "all_pro_1st": 2, "hof": 6}
+HONORS_CAP = 20                                # median HOF honors points under HONORS_WEIGHTS
 CAREER_CAP = 15                                # seasons
 
 # §7 Association / crowding
 DELTA = 0.15
-PEAK_POSITIONS = {"QB": "passing_yards", "RB": "scrimmage_yards", "WR": "scrimmage_yards", "TE": "scrimmage_yards"}
-PEAK_FIRST_SEASON = 1999
+# peak = min(1, best qualifying-season production / benchmark); season stats exist from 1999
+PEAK_BENCHMARK = {"QB": ("passing_yards", 4000), "RB": ("scrimmage_yards", 1200),
+                  "WR": ("scrimmage_yards", 1200), "TE": ("scrimmage_yards", 1200)}
+PRE_1950 = 1950  # QBs with a career season before this use seasons share (the §7 one-unit exception)
 
 THRESHOLDS_FILE = DATA_DIR / "tier_thresholds.json"
 TIERS = ["Starter", "Backup", "Hidden Gem", "Sleeper Pick"]
@@ -53,34 +55,24 @@ def fame(con) -> pl.DataFrame:
 # -------------------------------------------------------------- association
 
 def _peak(con, prompt: Prompt, answers: pl.DataFrame) -> pl.DataFrame:
-    """peak = best in-context season / career-best season, QB/RB/WR/TE only, careers starting 1999+ (§7)."""
+    """peak = min(1, best in-context season / benchmark), QB/RB/WR/TE, seasons 1999+ (§7)."""
     f = prompt.filters
     teams = _as_list(f.get("teams_all", f.get("team", []))) or None
     where, _ = _context_where(f, teams)
+    qb_col, qb_bench = PEAK_BENCHMARK["QB"]
+    sk_col, sk_bench = PEAK_BENCHMARK["RB"]
     con.register("_ids", answers.select("player_id").to_arrow())
     out = con.sql(f"""
-        WITH pos AS (  -- the player's position group in context decides the production metric
-            SELECT t.player_id, mode(t.pos_group) AS pos_group, min(t.season) AS ctx_first
-            FROM player_team_seasons t WHERE t.player_id IN (SELECT player_id FROM _ids) AND {where} AND t.counted
-            GROUP BY 1),
-        first AS (SELECT player_id, min(season) AS career_first FROM player_team_seasons
-                  WHERE counted AND player_id IN (SELECT player_id FROM _ids) GROUP BY 1),
-        prod AS (
-            SELECT p.player_id, p.season, p.franchise,
-                   CASE pos.pos_group WHEN 'QB' THEN p.passing_yards ELSE p.scrimmage_yards END AS y
-            FROM player_season_production p JOIN pos USING (player_id)
-            WHERE pos.pos_group IN ('QB', 'RB', 'WR', 'TE')),
-        career AS (SELECT player_id, max(y) AS best FROM (SELECT player_id, season, sum(y) y FROM prod GROUP BY 1, 2) GROUP BY 1),
-        ctx AS (
-            SELECT prod.player_id, max(prod.y) AS best_ctx
-            FROM prod JOIN player_team_seasons t
-              ON t.player_id = prod.player_id AND t.season = prod.season AND t.franchise = prod.franchise
-            WHERE {where}
-            GROUP BY 1)
-        SELECT pos.player_id,
-               CASE WHEN first.career_first >= {PEAK_FIRST_SEASON} AND career.best > 0
-                    THEN least(1.0, coalesce(ctx.best_ctx, 0) / career.best) END AS peak
-        FROM pos JOIN first USING (player_id) LEFT JOIN career USING (player_id) LEFT JOIN ctx USING (player_id)
+        WITH ctx AS (  -- in-context seasons; the season's listed position picks the metric
+            SELECT t.player_id, t.season, t.franchise, t.pos_group FROM player_team_seasons t
+            WHERE t.player_id IN (SELECT player_id FROM _ids) AND {where} AND t.counted
+              AND t.pos_group IN ('QB', 'RB', 'WR', 'TE'))
+        SELECT ctx.player_id,
+               least(1.0, max(CASE ctx.pos_group WHEN 'QB' THEN p.{qb_col} / {qb_bench}
+                                                 ELSE p.{sk_col} / {sk_bench} END)) AS peak
+        FROM ctx JOIN player_season_production p
+          ON p.player_id = ctx.player_id AND p.season = ctx.season AND p.franchise = ctx.franchise
+        GROUP BY 1
     """).pl()
     con.unregister("_ids")
     return out
@@ -101,17 +93,27 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
     else:
         pos = p.filters.get("position")
         is_qb = pos is not None and [x.upper() for x in _as_list(pos)] == ["QB"]
-        # §7 one unit per prompt: QB starts unless any valid answer lacks starts (pre-1950 QBs)
-        unit = "starts" if is_qb and not a["pre1950_qb"].any() else "seasons"
-        if is_qb and unit == "seasons":
-            info["notes"].append("QB prompt scored with seasons: it includes pre-1950 QBs, who have no starts (§7 one-unit rule)")
-        info["unit"] = unit
-        num, den = ("ctx_qb_starts", "career_qb_starts") if unit == "starts" else ("ctx_seasons", "career_seasons")
-
-        if "per_team" in a.columns:  # two-team: A = max over the teams
-            a = a.with_columns(share=pl.col("per_team").list.eval(pl.element().struct.field(num)).list.max() / pl.col(den))
+        if is_qb:
+            # §7: QB prompts use starts share; the one exception is QBs with any pre-1950 career
+            # season (no starts data), who use seasons share
+            first = con.sql("SELECT player_id, min(season) AS career_first FROM player_team_seasons "
+                            "WHERE counted GROUP BY 1").pl()
+            a = a.join(first, on="player_id", how="left").with_columns(
+                unit=pl.when(pl.col("career_first") < PRE_1950).then(pl.lit("seasons")).otherwise(pl.lit("starts")))
+            n_pre = int((a["unit"] == "seasons").sum())
+            info["unit"] = "starts" + (f" ({n_pre} pre-1950 QBs on seasons)" if n_pre else "")
         else:
-            a = a.with_columns(share=pl.col(num) / pl.col(den))
+            a = a.with_columns(unit=pl.lit("seasons"))
+            info["unit"] = "seasons"
+
+        def share(num: str, den: str) -> pl.Expr:
+            if "per_team" in a.columns:  # two-team: A = max over the teams
+                return pl.col("per_team").list.eval(pl.element().struct.field(num)).list.max() / pl.col(den)
+            return pl.col(num) / pl.col(den)
+
+        a = a.with_columns(share=pl.when(pl.col("unit") == "starts")
+                           .then(share("ctx_qb_starts", "career_qb_starts"))
+                           .otherwise(share("ctx_seasons", "career_seasons")))
         a = a.with_columns(pl.col("share").fill_nan(None).clip(0, 1))
         a = a.join(_peak(con, p, a), on="player_id", how="left")
         a = a.with_columns(A=pl.max_horizontal(pl.col("share").fill_null(0).sqrt(), pl.col("peak").fill_null(0)))

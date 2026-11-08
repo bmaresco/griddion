@@ -165,7 +165,7 @@ s_honors = clamp( honors_points / HONORS_CAP, 0, 1 )
 s_career = clamp( seasons / 15, 0, 1 )
 ```
 - `pv24` = **average monthly** enwiki pageviews (user agent) over the **most recent 24 complete months**. **Main signal** for how known a player is. No Wikipedia article → `s_pv = 0`.
-- `honors_points` = Pro Bowls + All-Pro (weighted higher) + Hall of Fame (weighted highest). Protects pre-internet stars whose pageviews undercount their fame. **TODO:** set exact weights with a written reason.
+- `honors_points` = weighted Pro Bowls + All-Pro + Hall of Fame (table below). Protects pre-internet stars whose pageviews undercount their fame.
 - `seasons` = distinct seasons on a regular-season roster. Separates a 10-year starter from a one-season player.
 - Decision: college or off-field fame in pageviews (e.g. a famous college QB) is **kept**. Fans who know the player are more likely to recall his NFL stops too.
 
@@ -175,8 +175,18 @@ s_career = clamp( seasons / 15, 0, 1 )
 |---|---|---|
 | `pv24` floor | **30 / month** | ≈1 view/day, crawler-noise level: a player here is effectively unknown. ~8% of players with articles sit at or below it. |
 | `pv24` ceiling | **300,000 / month** | ≈10k views/day, the current top of the distribution (Brady, Kelce, Josh Allen ≈ 320–340k). Separating the very top doesn't change recall, so anything above clamps to 1. |
-| `HONORS_CAP` | **median `honors_points` of Hall of Fame inductees** in the DB (value computed and recorded here once the weights are set) | A typical Hall of Fame career is the natural "maximum fame from honors". Half of HOFers clamp to 1, which is intended. |
+| `HONORS_CAP` | **20** = the median `honors_points` of Hall of Fame players under the weights below | A typical Hall of Fame career is the natural "maximum fame from honors". Half of HOFers clamp to 1, which is intended. |
 | career cap | **15 seasons** | The 99th percentile of careers in the DB (1.1% of players reach it). Longer careers don't add recall. |
+
+**Decision: honors weights.**
+
+| Honor | Points | Reason |
+|---|---|---|
+| Pro Bowl | 1 | The base unit and the most common honor (2,374 non-HOF players have at least one). |
+| AFL All-Star | 1 | The AFL's Pro Bowl. AFL seasons count for team prompts (§5), so its stars shouldn't count for less. |
+| 2nd-team All-Pro | 1 | About as selective as a Pro Bowl, and the two mostly go to the same players. |
+| 1st-team All-Pro | 2 | Best at his position that year: a stronger recall signal than a Pro Bowl, and about half as common. |
+| Hall of Fame | 6 | The median HOF player has 14 points before induction and 20 after, above the 99th-percentile non-HOF career (16), so induction reliably reads as more fame than any non-HOF honors haul ("weighted highest"). Also gives early-era HOFers with few Pro Bowls a floor of 0.3. |
 
 **Decision: 24-month pageview window, not lifetime.** Pageview data only starts in July 2015, so lifetime totals undercounted anyone who retired before or during the window (Kyle Orton, retired 2014, had fewer lifetime views than Chase Daniel). A recent-window average puts every player on the same footing. The boost active players get is **accepted as real current recall**. The floor and ceiling above were picked for this metric (monthly average, so much smaller than lifetime totals).
 
@@ -190,13 +200,21 @@ A       = 1                                       for trait prompts
 ```
 - `sqrt` softens the drop-off: half a career ≈ 0.71.
 - `peak` keeps a memorable short stint (one great season with a team) from being treated like a cameo.
-- **`peak` applies only to QB, RB, WR, TE**, using position-appropriate production: passing yards (QB), yards from scrimmage (RB, WR, TE). All other positions, and all pre-1999 players (no season stats), use **`A = sqrt(share)`** only.
+- **`peak = min(1, best qualifying-season production ÷ benchmark)`**, for **QB, RB, WR, TE** only. A season's listed position picks the metric. All other positions use **`A = sqrt(share)`** only. Season stats start in 1999, so qualifying seasons before 1999 contribute no peak.
+
+| Benchmark | Value | Reason |
+|---|---|---|
+| QB | **4,000 passing yards** | The classic "big season" mark: about 9–10 QBs reach it per season since 2009 (about 4 per season in 1999–2008), so hitting it makes a stint memorable. |
+| RB, WR, TE | **1,200 scrimmage yards** | About 25–30 players per season reach it (1999–2025), roughly a Pro Bowl-calibre skill-position season. |
+
+- Why a benchmark rather than "÷ career-best season": against a career best, any backup's best season scores 1.0, so career backups maxed out their association (Chase Daniel outranked Jay Cutler on "Bears QB"). A fixed benchmark only rewards stints that were actually big.
 
 **Units:**
 - **QBs: starts.** Wikipedia QB lists, all seasons (nflverse for GB/LAR 1999+; see §3), 1950 on. Pre-1950 QBs use seasons.
 - **Everyone else: seasons on roster** (seasons with the team ÷ career seasons), counted by the §3 roster-status rule. Available for every player back to 1920.
 - **Games** only where they are complete (2013+, all positions) **and** they improve the result.
 - **One unit per prompt.** Never mix units within a prompt: if any valid answer lacks the chosen unit, score every player in that prompt with the fallback.
+- **The one exception: pre-1950 QBs.** On QB prompts, QBs with any career season before 1950 (no starts data) use **seasons share**; every other QB in the same prompt keeps **starts share**. Reason: share is a within-career ratio, so each QB's ratio is internally consistent, and switching a whole all-history QB prompt to seasons would overrate long-time backups.
 - **Games-fallback comparison test (QBs only):** before approving games as a fallback for QB prompts, score modern QB prompts both ways (starts vs games) and compare tiers. Approve only if tiers barely change.
 
 ### Base recall, R
@@ -278,7 +296,6 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 
 ## 11. Open items
 
-- Honors weights within F
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
 - ~~Game title~~ — **resolved:** Gridion (gridion.io)
