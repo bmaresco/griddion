@@ -3,6 +3,7 @@
 Kept as code so the translation is reviewable: one tuple per prompt, in day/slot order.
 Revisions approved after the first probe: two-team prompts are "skill player" (RB/WR/TE) where
 that reaches 25 answers, otherwise any position; TE stat 1,000 -> 800 yds; QB rushing 500 -> 400 yds.
+Duplicates replaced: 13.3 Patriots+Jets -> Bills+Patriots, 10.3 Rams+Cardinals -> Seahawks+Rams (skill player).
 """
 import json
 from pathlib import Path
@@ -108,7 +109,7 @@ DAYS = [
   ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
  [("Name an Eagles TE", team("PHI", "TE", 2000, f"2000–2026 seasons · {G}")),
   ("Name an AFC North RB", div("AFC North", "RB")),
-  ("Name a player who played for the Rams and the Cardinals", two("LA", "ARI", None)),
+  ("Name a skill player (RB/WR/TE) who played for the Seahawks and the Rams", two("SEA", "LA", ["RB", "WR", "TE"])),
   ("Name a player who played for the Bengals and the Steelers", two("CIN", "PIT", None)),
   ("Name an NFC QB from the 1990s", era(1990, 1999, "QB", "NFC")),
   ("Name a player with a 15+ sack season", stat("sacks", 15)),
@@ -129,7 +130,7 @@ DAYS = [
   ("Name an AP Comeback Player of the Year", award("comeback", 1998))],
  [("Name a Dolphins QB", team("MIA", "QB", sub=f"{ALL} · {QB}")),
   ("Name a Saints WR", team("NO", "WR", sub=f"{ALL} · {G99}")),
-  ("Name a skill player (RB/WR/TE) who played for the Patriots and the Jets", two("NE", "NYJ", ["RB", "WR", "TE"])),
+  ("Name a skill player (RB/WR/TE) who played for the Bills and the Patriots", two("BUF", "NE", ["RB", "WR", "TE"])),
   ("Name a player who played for the Saints and the Buccaneers", two("NO", "TB", None)),
   ("Name an NFC TE from the 1990s", era(1990, 1999, "TE", "NFC")),
   ("Name a QB with a 400+ rushing yard season", stat("rushing_yards", 400, "QB")),

@@ -145,6 +145,10 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
     a = a.with_columns(n_higher=(pl.col("R").rank("min", descending=True) - 1).cast(pl.Int64))
     a = a.with_columns(R_prime=pl.col("R") * (1 + pl.col("n_higher")) ** (-DELTA))
     a = a.with_columns(tier=_tier_expr(threshold_kind(p)))
+    if p.botched_trick_play:
+        # §2: manual only. The prompt names the player; the tier overrides the formula's.
+        a = a.with_columns(tier=pl.when(pl.col("player_id") == p.botched_trick_play)
+                           .then(pl.lit("Botched Trick Play")).otherwise(pl.col("tier")))
     return a.sort("R_prime", descending=True), info
 
 
@@ -194,18 +198,7 @@ def calibrate(pooled: list[tuple[float, float]]) -> dict:
 
 # -------------------------------------------------------- review helpers (§2, §6)
 
-BOTCHED_MIN_F = 0.58   # ~98th percentile of F across all players: genuinely famous
-BOTCHED_MAX_A = 0.35   # weak tie to the prompt
 TOP_HEAVY, BOTTOM_HEAVY = 0.70, 0.85  # share of Starter+Backup / Hidden Gem+Sleeper that triggers a warning
-
-
-def suggest_botched(scored: pl.DataFrame) -> dict | None:
-    """§2: at most one Botched Trick Play suggestion: the most famous answer with a weak tie
-    to the prompt. Never assigned automatically; a human approves or rejects it."""
-    if scored.height == 0 or "A" not in scored.columns:
-        return None
-    c = scored.filter((pl.col("F") >= BOTCHED_MIN_F) & (pl.col("A") <= BOTCHED_MAX_A)).sort("F", descending=True)
-    return c.row(0, named=True) if c.height else None
 
 
 def spread_warnings(scored: pl.DataFrame) -> list[str]:

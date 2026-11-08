@@ -52,12 +52,14 @@ class Prompt:
     id: str = ""
     type: str = ""
     subtitle: str = ""
+    botched_trick_play: str | None = None  # player_id, set by hand only (§2)
 
     @classmethod
     def from_json(cls, obj: dict | str) -> "Prompt":
         d = json.loads(obj) if isinstance(obj, str) else obj
         return cls(filters=d.get("filters", {}), text=d.get("text", ""), id=d.get("id", ""),
-                   type=d.get("type", ""), subtitle=d.get("subtitle", ""))
+                   type=d.get("type", ""), subtitle=d.get("subtitle", ""),
+                   botched_trick_play=d.get("botched_trick_play"))
 
     @property
     def is_trait(self) -> bool:

@@ -30,7 +30,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Invalid / no answer | 0 | |
 
 - **YKB Kid** is chosen manually from the Sleeper Pick / Hidden Gem answers. It's the most satisfying deep pull, not necessarily the rarest.
-- **Botched Trick Play** is never assigned automatically. The pipeline may *suggest* at most one candidate per prompt: the most famous answer with **F ≥ 0.58** (about the top 2% of all players) and **A ≤ 0.35** (weak tie to the prompt). Trait prompts (A = 1) never get one. The human decides, and most prompts have none.
+- **Botched Trick Play** is a **manual option only**: never assigned or suggested by the pipeline. It's used on a handful of prompts at most, and only when explicitly added to a prompt (`"botched_trick_play": "<player_id>"`), which overrides that one answer's tier. **No prompt uses it at launch.** (An automatic suggestion — most famous answer with F ≥ 0.58 and A ≤ 0.35 — was tried on the 14-day draft and all 32 suggestions were rejected.)
 
 ---
 
@@ -381,4 +381,5 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
+- **Known limit: no `peak` before 1999.** Season stats start in 1999, so pre-1999 era prompts can't rescue a short, famous tenure with `peak`, and those players read as low association (e.g. Joe Montana's 1990 season on "NFC QB from the 1990s" is a 1-of-many-seasons stint: A ≈ 0.21). Revisit with real answer data after launch.
 - ~~Game title~~ — **resolved:** Gridion (gridion.io)

@@ -154,8 +154,8 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *2000–2026 seasons · Must have played in a regular-season game*
 2. 🔥 **Name an AFC North RB**
    *2002–2026 seasons · Must have played in a regular-season game*
-3. **Name a player who played for the Rams and the Cardinals**
-   *All seasons (franchise history) · Must have played a regular-season game for both*
+3. **Name a skill player (RB/WR/TE) who played for the Seahawks and the Rams**
+   *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 4. **Name a player who played for the Bengals and the Steelers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
 5. **Name an NFC QB from the 1990s**
@@ -202,7 +202,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *All seasons (franchise history) · QBs must have started a regular-season game*
 2. 🔥 **Name a Saints WR**
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
-3. **Name a skill player (RB/WR/TE) who played for the Patriots and the Jets**
+3. **Name a skill player (RB/WR/TE) who played for the Bills and the Patriots**
    *All seasons (franchise history) · Must have played a regular-season game for both (RB, WR or TE)*
 4. **Name a player who played for the Saints and the Buccaneers**
    *All seasons (franchise history) · Must have played a regular-season game for both*
@@ -234,6 +234,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
 ## Revisions after the first probe (approved)
 - Two-team prompts: same-position (RB or WR) versions all came in under 25. Changed to "skill player" (RB, WR or TE) where that reaches 25; the other 14 pairs are any position.
 - TE receiving yards 1,000 → 800 (18 → 50 answers). QB rushing yards 500 → 400 (22 → 38 answers).
+- Duplicates replaced: Day 13.3 (was Patriots+Jets, same as 1.4) → Bills+Patriots skill player; Day 10.3 (was Rams+Cardinals, same as 5.3) → Seahawks+Rams skill player.
 
 ## Notes for probing
 - **Franchise history** includes relocations and renames (Raiders, Rams, Cardinals, Colts, Chargers, Titans/Oilers, Washington).

@@ -71,8 +71,18 @@ def problems(p: dict) -> list[str]:
     return out
 
 
+def filter_key(f: dict) -> str:
+    """Canonical filters: team order and list order don't matter."""
+    g = {k: (sorted(v) if isinstance(v, list) else v) for k, v in f.items()}
+    return json.dumps(g, sort_keys=True)
+
+
+# intentional repeats (e.g. the award slot rotates through the same six awards)
+ALLOWED_REPEAT_TYPES = {"trait"}
+
 path = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).parent / "prompts_14_days.jsonl")
 bad = 0
+seen: dict[str, str] = {}
 for line in path.read_text().splitlines():
     if not line.strip() or line.startswith("#"):
         continue
@@ -80,4 +90,9 @@ for line in path.read_text().splitlines():
     for msg in problems(p):
         bad += 1
         print(f"{p['id']}: {p['text']!r} -> {msg}")
-print(f"{bad} disagreement(s)")
+    k = filter_key(p["filters"])
+    if k in seen and p.get("type") not in ALLOWED_REPEAT_TYPES:
+        bad += 1
+        print(f"{p['id']}: {p['text']!r} -> same filters as {seen[k]}")
+    seen.setdefault(k, p["id"])
+print(f"{bad} problem(s)")

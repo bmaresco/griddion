@@ -15,7 +15,7 @@ import polars as pl
 
 from .answers import DAY_AVG_MAX, MIN_ANSWERS, TIGHT_MARGIN, Prompt, Result, build_answers
 from .db import connect
-from .scoring import TIERS, fame, load_thresholds, score_answers, spread_warnings, suggest_botched
+from .scoring import TIERS, fame, load_thresholds, score_answers, spread_warnings
 
 SAMPLE = 8
 
@@ -92,14 +92,12 @@ def batch(con, path: str) -> str:
             status = "STOP" if r.n < MIN_ANSWERS else ("tight" if r.n <= MIN_ANSWERS + TIGHT_MARGIN else "ok")
             scored, _ = score_answers(con, r, f)
             c = {t: int((scored["tier"] == t).sum()) for t in TIERS} if r.n else {}
-            btp = suggest_botched(scored)
             row |= {"answers": r.n, "status": status,
                     "S·B·HG·SP": " · ".join(str(c.get(t, 0)) for t in TIERS),
                     "spread_warnings": "; ".join(spread_warnings(scored)),
-                    "botched_suggestion": f"{btp['display_name']} (F {btp['F']:.2f}, A {btp['A']:.2f})" if btp else "",
                     "warnings": "; ".join(r.warnings)[:60]}
         except Exception as ex:  # keep going; report the bad prompt
-            row |= {"answers": None, "status": "error", "S·B·HG·SP": "", "spread_warnings": "", "botched_suggestion": "", "warnings": str(ex)[:60]}
+            row |= {"answers": None, "status": "error", "S·B·HG·SP": "", "spread_warnings": "", "warnings": str(ex)[:60]}
         rows.append(row)
     df = pl.DataFrame(rows)
     out = []
