@@ -8,7 +8,7 @@ A prompt is structured filters (spec §5):
 Filters
     team            franchise code ("CHI"); AFL seasons count, AAFC seasons don't
     teams_all       ["NYJ", "MIN"]: valid for every listed team
-    position        group (QB RB WR TE OL DL LB DB K P LS) or a specific code (CB, FS, ...)
+    position        group (QB RB WR TE OL DL LB DB K P LS), a specific code (CB, FS, ...), or a list
     conference      "AFC" | "NFC" (1970+)
     division        "NFC North", "AFC Central", "Coastal", ...
     league          "NFL" | "AFL"
@@ -83,11 +83,15 @@ def _as_list(v) -> list:
     return v if isinstance(v, list) else [v]
 
 
-def _position_clause(pos: str, alias: str = "t") -> str:
-    p = pos.upper()
-    if p in POSITION_GROUPS:
-        return f"{alias}.pos_group = '{p}'"
-    return f"({alias}.position = '{p}' OR {alias}.depth_chart_position = '{p}')"
+def _position_clause(pos: str | list[str], alias: str = "t") -> str:
+    """One position (group or code) or a list of them, e.g. ["RB", "WR", "TE"] for skill players."""
+    parts = []
+    for p in (x.upper() for x in _as_list(pos)):
+        if p in POSITION_GROUPS:
+            parts.append(f"{alias}.pos_group = '{p}'")
+        else:
+            parts.append(f"({alias}.position = '{p}' OR {alias}.depth_chart_position = '{p}')")
+    return "(" + " OR ".join(parts) + ")"
 
 
 def _context_where(f: dict, teams: list[str] | None, alias: str = "t") -> tuple[str, list[str]]:
@@ -126,8 +130,8 @@ def build_answers(con, prompt: Prompt) -> Result:
         if int(f.get("season_min", 0)) < STATS_FIRST_SEASON:
             f = {**f, "season_min": STATS_FIRST_SEASON}
             warnings.append(f"stat prompt: season_min set to {STATS_FIRST_SEASON} (season stats start then)")
-        if "1999" not in (prompt.text or "") and int(f["season_min"]) == STATS_FIRST_SEASON:
-            warnings.append('stat prompt text must state the date, e.g. "... in a season (since 1999)"')
+        if "1999" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == STATS_FIRST_SEASON:
+            warnings.append('stat prompt must state the date in its text or subtitle, e.g. "(since 1999)"')
     trait_ids = _trait_players(con, f, warnings) if ("award" in f or "stat_threshold" in f) else None
     if prompt.is_trait:
         answers = _trait_answers(con, trait_ids, f)
@@ -136,7 +140,7 @@ def build_answers(con, prompt: Prompt) -> Result:
     team_sets = [[t] for t in _as_list(f["teams_all"])] if "teams_all" in f else [
         _as_list(f["team"]) if "team" in f else None]
     pos = f.get("position")
-    is_qb = pos is not None and pos.upper() == "QB"
+    is_qb = pos is not None and [p.upper() for p in _as_list(pos)] == ["QB"]
 
     per_team, edge = [], {}
     for teams in team_sets:
@@ -245,7 +249,7 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
             raise ValueError(f"unknown stat {st['stat']!r}; known: {sorted(STATS)}")
         ids = {r[0] for r in con.execute(f"""
             SELECT player_id FROM raw_player_week
-            WHERE season_type = 'REG' AND season BETWEEN ? AND ?
+            WHERE season_type = 'REG' AND season BETWEEN ? AND ? AND player_id IS NOT NULL
             GROUP BY player_id, season HAVING sum({stat}) >= ?""", [max(smin, STATS_FIRST_SEASON), smax, st["min"]]).fetchall()}
         sets.append(ids)
     return set.intersection(*sets) if sets else set()

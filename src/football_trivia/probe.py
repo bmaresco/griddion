@@ -21,7 +21,7 @@ SAMPLE = 8
 
 def _describe(f: dict) -> str:
     parts = []
-    for k in ("team", "teams_all", "position", "conference", "division", "league", "award"):
+    for k in ("team", "teams_all", "position", "conference", "division", "league", "award"):  # lists join with +
         if k in f:
             v = f[k]
             parts.append(f"{k}={'+'.join(v) if isinstance(v, list) else v}")

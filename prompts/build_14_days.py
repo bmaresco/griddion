@@ -1,0 +1,153 @@
+"""Generate prompts_14_days.jsonl (filter JSON for probe) from prompts_14_days.md's table.
+
+Kept as code so the translation is reviewable: one tuple per prompt, in day/slot order.
+Revisions approved after the first probe: two-team prompts are "skill player" (RB/WR/TE) where
+that reaches 25 answers, otherwise any position; TE stat 1,000 -> 800 yds; QB rushing 500 -> 400 yds.
+"""
+import json
+from pathlib import Path
+
+ALL = "All seasons (franchise history)"
+QB = "QBs must have started a regular-season game"
+G = "Must have played in a regular-season game"
+G99 = "Must have played in a regular-season game (on an active roster before 1999)"
+BOTH = "Must have played a regular-season game for both"
+ACT = "Must have been on an active regular-season roster"
+STAT = "Single season, 1999–2026 regular season"
+
+def team(t, pos, smin=None, sub=None):
+    f = {"team": t, "position": pos}
+    if smin: f["season_min"] = smin
+    return ("team", f, sub)
+
+def div(d, pos):
+    return ("team", {"division": d, "position": pos, "season_min": 2002}, f"2002–2026 seasons · {QB if pos == 'QB' else G}")
+
+def two(a, b, pos, smin=None):
+    f = {"teams_all": [a, b]}
+    if pos: f["position"] = pos  # ["RB", "WR", "TE"] = skill player; None = any position
+    if smin: f["season_min"] = smin
+    return ("two_team", f, f"{f'{smin}–2026 seasons' if smin else ALL} · {BOTH}")
+
+def era(lo, hi, pos, conf=None, sub_extra=""):
+    f = {"position": pos, "season_min": lo, "season_max": hi}
+    if conf: f["conference"] = conf
+    return ("era", f, f"{lo}–{hi} seasons{sub_extra} · {QB if pos == 'QB' else ACT}")
+
+def stat(s, n, pos=None):
+    f = {"stat_threshold": {"stat": s, "min": n}, "season_min": 1999}
+    if pos: f["position"] = pos
+    return ("trait", f, STAT)
+
+def award(a, lo):
+    return ("trait", {"award": a, "season_min": lo, "season_max": 2025}, f"{lo}–2025 seasons")
+
+DAYS = [
+ [("Name a Browns QB", team("CLE", "QB", sub=f"{ALL} · {QB}")),
+  ("Name an NFC North WR", div("NFC North", "WR")),
+  ("Name a player who played for the Raiders and the Chiefs", two("LV", "KC", None)),
+  ("Name a skill player who played for the Jets and the Patriots", two("NYJ", "NE", ["RB", "WR", "TE"])),
+  ("Name an AFC QB from the 1990s", era(1990, 1999, "QB", "AFC")),
+  ("Name a WR with a 1,500+ receiving yard season", stat("receiving_yards", 1500, "WR")),
+  ("Name an AP MVP", award("mvp", 1957))],
+ [("Name a Cowboys RB", team("DAL", "RB", 2000, f"2000–2026 seasons · {G}")),
+  ("Name a Packers WR", team("GB", "WR", sub=f"{ALL} · {G99}")),
+  ("Name a player who played for the Cowboys and the Eagles", two("DAL", "PHI", None)),
+  ("Name a skill player who played for the Bills and the Jets", two("BUF", "NYJ", ["RB", "WR", "TE"])),
+  ("Name an NFC RB from the 1980s", era(1980, 1989, "RB", "NFC")),
+  ("Name a player with a 10+ sack season", stat("sacks", 10)),
+  ("Name an AP Defensive Player of the Year", award("dpoy", 1971))],
+ [("Name a Jets QB", team("NYJ", "QB", sub=f"{ALL} · {QB}")),
+  ("Name an AFC South RB", div("AFC South", "RB")),
+  ("Name a skill player who played for the Bears and the Packers", two("CHI", "GB", ["RB", "WR", "TE"])),
+  ("Name a skill player who played for the Giants and Washington", two("NYG", "WAS", ["RB", "WR", "TE"])),
+  ("Name a QB from the 1970s", era(1970, 1979, "QB")),
+  ("Name a QB with a 4,000+ passing yard season", stat("passing_yards", 4000, "QB")),
+  ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
+ [("Name a Chiefs TE", team("KC", "TE", 2000, f"2000–2026 seasons · {G}")),
+  ("Name an NFC East QB", div("NFC East", "QB")),
+  ("Name a skill player who played for the Bills and the Dolphins", two("BUF", "MIA", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Broncos and the Raiders", two("DEN", "LV", None)),
+  ("Name a kicker from the 1980s", era(1980, 1989, "K")),
+  ("Name a RB with a 1,000+ rushing yard season", stat("rushing_yards", 1000, "RB")),
+  ("Name an AP Offensive Player of the Year", award("opoy", 1972))],
+ [("Name a Lions QB", team("DET", "QB", sub=f"{ALL} · {QB}")),
+  ("Name a Colts WR", team("IND", "WR", sub=f"All seasons (Baltimore & Indianapolis) · {G99}")),
+  ("Name a player who played for the Cardinals and the Rams", two("ARI", "LA", None)),
+  ("Name a skill player who played for the Steelers and the Browns", two("PIT", "CLE", ["RB", "WR", "TE"])),
+  ("Name an AFC WR from the 1990s", era(1990, 1999, "WR", "AFC")),
+  ("Name a DB with a 5+ interception season", stat("interceptions", 5, "DB")),
+  ("Name an AP Defensive Rookie of the Year", award("droy", 1967))],
+ [("Name a Steelers LB", team("PIT", "LB", sub=f"{ALL} · {G99}")),
+  ("Name an AFC West TE", div("AFC West", "TE")),
+  ("Name a player who played for the Cowboys and the Giants", two("DAL", "NYG", None)),
+  ("Name a player who played for the Vikings and the Packers", two("MIN", "GB", None)),
+  ("Name a QB from the 1960s", era(1960, 1969, "QB", sub_extra=", NFL & AFL")),
+  ("Name a TE with an 800+ receiving yard season", stat("receiving_yards", 800, "TE")),
+  ("Name an AP Comeback Player of the Year", award("comeback", 1998))],
+ [("Name a Washington QB", team("WAS", "QB", sub=f"{ALL} · {QB}")),
+  ("Name a Patriots RB", team("NE", "RB", 2000, f"2000–2026 seasons · {G}")),
+  ("Name a player who played for the Seahawks and the 49ers", two("SEA", "SF", None)),
+  ("Name a skill player who played for the Chargers and the Chiefs", two("LAC", "KC", ["RB", "WR", "TE"])),
+  ("Name an AFC TE from the 1980s", era(1980, 1989, "TE", "AFC")),
+  ("Name a RB with a 15+ rushing TD season", stat("rushing_tds", 15, "RB")),
+  ("Name an AP MVP", award("mvp", 1957))],
+ [("Name a Bengals WR", team("CIN", "WR", 2000, f"2000–2026 seasons · {G}")),
+  ("Name an NFC South QB", div("NFC South", "QB")),
+  ("Name a player who played for the Broncos and the Chargers", two("DEN", "LAC", None)),
+  ("Name a skill player who played for the Colts and the Titans", two("IND", "TEN", ["RB", "WR", "TE"])),
+  ("Name a QB from the 1980s", era(1980, 1989, "QB")),
+  ("Name a WR with a 100+ reception season", stat("receptions", 100, "WR")),
+  ("Name an AP Defensive Player of the Year", award("dpoy", 1971))],
+ [("Name a Cardinals QB", team("ARI", "QB", sub=f"{ALL} · {QB}")),
+  ("Name a Titans RB", team("TEN", "RB", 2000, f"2000–2026 seasons · {G}")),
+  ("Name a skill player who played for the Falcons and the Saints", two("ATL", "NO", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Lions and the Vikings", two("DET", "MIN", None)),
+  ("Name an AFC RB from the 1970s", era(1970, 1979, "RB", "AFC")),
+  ("Name a QB with a 30+ passing TD season", stat("passing_tds", 30, "QB")),
+  ("Name an AP Offensive Rookie of the Year", award("oroy", 1967))],
+ [("Name an Eagles TE", team("PHI", "TE", 2000, f"2000–2026 seasons · {G}")),
+  ("Name an AFC North RB", div("AFC North", "RB")),
+  ("Name a player who played for the Rams and the Cardinals", two("LA", "ARI", None)),
+  ("Name a player who played for the Bengals and the Steelers", two("CIN", "PIT", None)),
+  ("Name an NFC QB from the 1990s", era(1990, 1999, "QB", "NFC")),
+  ("Name a player with a 15+ sack season", stat("sacks", 15)),
+  ("Name an AP Offensive Player of the Year", award("opoy", 1972))],
+ [("Name a 49ers QB", team("SF", "QB", sub=f"{ALL} · {QB}")),
+  ("Name a Vikings WR", team("MIN", "WR", sub=f"{ALL} · {G99}")),
+  ("Name a player who played for the Falcons and the Panthers", two("ATL", "CAR", None, 1995)),
+  ("Name a skill player who played for the Jaguars and the Texans", two("JAX", "HOU", ["RB", "WR", "TE"], 2002)),
+  ("Name an NFC WR from the 1980s", era(1980, 1989, "WR", "NFC")),
+  ("Name a RB with a 1,500+ rushing yard season", stat("rushing_yards", 1500, "RB")),
+  ("Name an AP Defensive Rookie of the Year", award("droy", 1967))],
+ [("Name a Seahawks RB", team("SEA", "RB", 2000, f"2000–2026 seasons · {G}")),
+  ("Name an AFC East QB", div("AFC East", "QB")),
+  ("Name a skill player who played for the Eagles and Washington", two("PHI", "WAS", ["RB", "WR", "TE"])),
+  ("Name a skill player who played for the Bears and the Lions", two("CHI", "DET", ["RB", "WR", "TE"])),
+  ("Name a kicker from the 1990s", era(1990, 1999, "K")),
+  ("Name a WR with a 12+ receiving TD season", stat("receiving_tds", 12, "WR")),
+  ("Name an AP Comeback Player of the Year", award("comeback", 1998))],
+ [("Name a Dolphins QB", team("MIA", "QB", sub=f"{ALL} · {QB}")),
+  ("Name a Saints WR", team("NO", "WR", sub=f"{ALL} · {G99}")),
+  ("Name a skill player who played for the Patriots and the Jets", two("NE", "NYJ", ["RB", "WR", "TE"])),
+  ("Name a player who played for the Saints and the Buccaneers", two("NO", "TB", None)),
+  ("Name an NFC TE from the 1990s", era(1990, 1999, "TE", "NFC")),
+  ("Name a QB with a 400+ rushing yard season", stat("rushing_yards", 400, "QB")),
+  ("Name an AP MVP", award("mvp", 1957))],
+ [("Name a Bears QB", team("CHI", "QB", sub=f"{ALL} · {QB}")),
+  ("Name an NFC West TE", div("NFC West", "TE")),
+  ("Name a player who played for the Broncos and the Chiefs", two("DEN", "KC", None)),
+  ("Name a skill player who played for the Ravens and the Browns", two("BAL", "CLE", ["RB", "WR", "TE"], 1996)),
+  ("Name an AFC QB from the 1980s", era(1980, 1989, "QB", "AFC")),
+  ("Name a RB with a 60+ reception season", stat("receptions", 60, "RB")),
+  ("Name an AP Defensive Player of the Year", award("dpoy", 1971))],
+]
+
+assert len(DAYS) == 14 and all(len(d) == 7 for d in DAYS)
+out = Path(__file__).with_suffix("").parent / "prompts_14_days.jsonl"
+with open(out, "w") as fh:
+    for d, prompts in enumerate(DAYS, 1):
+        for s, (text, (ptype, filters, sub)) in enumerate(prompts, 1):
+            fh.write(json.dumps({"day": d, "slot": s, "id": f"d{d:02d}-{s}", "text": text, "subtitle": sub,
+                                 "type": ptype, "filters": filters}, ensure_ascii=False) + "\n")
+print(f"wrote {out} ({sum(len(d) for d in DAYS)} prompts)")
