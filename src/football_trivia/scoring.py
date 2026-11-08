@@ -146,12 +146,17 @@ def _tier_expr() -> pl.Expr:
             .otherwise(pl.lit("Sleeper Pick")))
 
 
-def calibrate(pooled_r_prime: list[float]) -> dict:
-    """§7: thresholds at pooled percentiles (top 10% / next 35% / next 35% / bottom 20%)."""
-    s = pl.Series(pooled_r_prime)
-    cum = 0.0
-    out = {}
+def calibrate(pooled: list[tuple[float, float]]) -> dict:
+    """§7: thresholds at pooled percentiles (top 10% / next 35% / next 35% / bottom 20%).
+
+    `pooled` is (R', weight) pairs; each answer is weighted 1 / its prompt's pool size so
+    every calibration prompt counts equally and big pools don't set the thresholds.
+    """
+    df = pl.DataFrame(pooled, schema={"r": pl.Float64, "w": pl.Float64}, orient="row").sort("r", descending=True)
+    df = df.with_columns(cum=pl.col("w").cum_sum() / pl.col("w").sum())
+    out, cum = {}, 0.0
     for tier, share in zip(TIERS[:-1], CALIBRATION_SHARES[:-1]):
         cum += share
-        out[tier] = float(s.quantile(1 - cum, interpolation="linear"))
+        # lowest R' still inside the top `cum` share of weight
+        out[tier] = float(df.filter(pl.col("cum") <= cum + 1e-12)["r"].min() if df.filter(pl.col("cum") <= cum + 1e-12).height else df["r"].max())
     return out

@@ -154,10 +154,11 @@ def calibrate_file(con, path: str, freeze: bool) -> str:
         p = Prompt.from_json(line)
         r = build_answers(con, p)
         scored, info = score_answers(con, r, f)
-        pooled += scored["R_prime"].to_list()
+        n = max(scored.height, 1)
+        pooled += [(x, 1.0 / n) for x in scored["R_prime"].to_list()]  # every prompt weighs the same (§7)
         per.append((p.id or p.text, scored))
     th = calibrate(pooled)
-    lines = [f"Pooled {len(pooled)} answers from {len(per)} prompts. Thresholds (lower bounds on R'):"]
+    lines = [f"Pooled {len(pooled)} answers from {len(per)} prompts, each prompt weighted equally. Thresholds (lower bounds on R'):"]
     lines += [f"  {t:<12} R' ≥ {v:.4f}" for t, v in th.items()] + ["  Sleeper Pick below that"]
     tier = lambda x: next((t for t, v in th.items() if x >= v), "Sleeper Pick")
     lines.append("Per prompt (Starter · Backup · Hidden Gem · Sleeper Pick):")

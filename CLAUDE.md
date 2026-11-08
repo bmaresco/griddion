@@ -232,7 +232,7 @@ R′ = R × (1 + n)^(−δ)        δ = 0.15
 ### Tier thresholds (fixed values on R′)
 Set once, objectively:
 1. Run the pipeline on a batch of ~20 varied prompts (team, era, award, stat, two-team; easy and hard).
-2. Pool every answer's R′ across all prompts.
+2. Pool every answer's R′ across all prompts, **weighting each answer by 1 / (its prompt's pool size)** so every prompt counts equally. Otherwise the big pools (🔥 prompts, era QBs) would set the thresholds.
 3. Set thresholds at these pooled percentiles:
 
 | Tier | Share of pooled answers |
