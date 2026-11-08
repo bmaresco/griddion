@@ -17,11 +17,6 @@
    "file": "days/2.json"
   },
   {
-   "drive": 3,
-   "date": "2026-11-11",
-   "file": "days/3.json"
-  },
-  {
    "drive": 4,
    "date": "2026-11-12",
    "file": "days/4.json"
@@ -45,11 +40,6 @@
    "drive": 8,
    "date": "2026-11-16",
    "file": "days/8.json"
-  },
-  {
-   "drive": 9,
-   "date": "2026-11-17",
-   "file": "days/9.json"
   },
   {
    "drive": 10,
