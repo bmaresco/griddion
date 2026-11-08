@@ -145,6 +145,12 @@ def score_answers(con, result: Result, fame_df: pl.DataFrame | None = None) -> t
     a = a.with_columns(n_higher=(pl.col("R").rank("min", descending=True) - 1).cast(pl.Int64))
     a = a.with_columns(R_prime=pl.col("R") * (1 + pl.col("n_higher")) ** (-DELTA))
     a = a.with_columns(tier=_tier_expr(threshold_kind(p)))
+    # §2 YKB Kid: the prompt's override, else the highest-fame Sleeper Pick (else Hidden Gem)
+    ykb = p.ykb_kid or default_ykb_kid(a)
+    if ykb:
+        a = a.with_columns(tier=pl.when(pl.col("player_id") == ykb).then(pl.lit("YKB Kid")).otherwise(pl.col("tier")))
+    info["ykb_kid"] = ykb
+    info["ykb_source"] = "override" if p.ykb_kid else ("default" if ykb else None)
     if p.botched_trick_play:
         # §2: manual only. The prompt names the player; the tier overrides the formula's.
         a = a.with_columns(tier=pl.when(pl.col("player_id") == p.botched_trick_play)
@@ -194,6 +200,15 @@ def calibrate(pooled: list[tuple[float, float]]) -> dict:
         # lowest R' still inside the top `cum` share of weight
         out[tier] = float(df.filter(pl.col("cum") <= cum + 1e-12)["r"].min() if df.filter(pl.col("cum") <= cum + 1e-12).height else df["r"].max())
     return out
+
+
+def default_ykb_kid(scored: pl.DataFrame) -> str | None:
+    """§2: highest-fame Sleeper Pick; if the prompt has none, highest-fame Hidden Gem."""
+    for tier in ("Sleeper Pick", "Hidden Gem"):
+        c = scored.filter(pl.col("tier") == tier)
+        if c.height:
+            return c.sort(["F", "player_id"], descending=[True, False])["player_id"][0]
+    return None
 
 
 # -------------------------------------------------------- review helpers (§2, §6)

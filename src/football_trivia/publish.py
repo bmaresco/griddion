@@ -1,9 +1,9 @@
 """Build step 7: prompt scheduling + publish flow (spec §6 export format, §9 Drive #).
 
-    uv run publish build                 # all scheduled drives -> dist/ (hard stop if any prompt < 25)
+    uv run publish build                 # all scheduled drives -> public/ (hard stop if any prompt < 25)
     uv run publish build --drive 3       # one drive
-    uv run publish diff                  # weekly refresh diff report vs the last published dist/
-    uv run publish schedule --launch 2027-01-05   # (re)write the schedule from the prompt queue
+    uv run publish diff                  # weekly refresh diff report vs the last published public/
+    uv run publish schedule --launch 2026-11-09   # (re)write the schedule from the prompt queue
 
 Weekly flow in season: `refresh --skip pageviews` (or full) -> `publish diff` (review) -> `publish build`.
 """
@@ -25,7 +25,8 @@ from .scoring import TIERS, fame, load_thresholds, score_answers, threshold_kind
 from .teams import FRANCHISE_NAMES
 
 FORMAT_VERSION = 1
-DIST = ROOT / "dist"
+DIST = ROOT / "public"   # deployed as-is; the UI fetches these files
+ROLLOVER = {"time": "00:00", "timezone": "America/New_York"}  # §9: new drive at midnight Eastern
 SCHEDULE = ROOT / "prompts" / "schedule.json"
 QUEUE = ROOT / "prompts" / "prompts_14_days.jsonl"
 REPORTS = ROOT / "reports"
@@ -62,7 +63,7 @@ def write_schedule(launch: dt.date, queue: Path = QUEUE) -> dict:
         if line.strip() and not line.startswith("#"):
             p = json.loads(line)
             days.setdefault(int(p["day"]), []).append(p["id"])
-    sched = {"launch_date": launch.isoformat(), "queue": str(queue.relative_to(ROOT)),
+    sched = {"launch_date": launch.isoformat(), "rollover": ROLLOVER, "queue": str(queue.relative_to(ROOT)),
              "drives": [{"drive": d, "date": (launch + dt.timedelta(days=d - 1)).isoformat(), "prompt_ids": ids}
                         for d, ids in sorted(days.items())]}
     SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
@@ -172,13 +173,11 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, 
     warnings = list(r.warnings)
     if r.n < MIN_ANSWERS:
         warnings.append(f"HARD STOP: {r.n} answers")
-    ykb = obj.get("ykb_kid")
-    if ykb:
-        scored = scored.with_columns(tier=pl.when(pl.col("player_id") == ykb).then(pl.lit("YKB Kid")).otherwise(pl.col("tier")))
-        if ykb not in scored["player_id"].to_list():
-            warnings.append(f"ykb_kid {ykb} is not a valid answer")
-    else:
-        warnings.append("no YKB Kid chosen yet")
+    ykb = info.get("ykb_kid")
+    if p.ykb_kid and p.ykb_kid not in scored["player_id"].to_list():
+        warnings.append(f"ykb_kid override {p.ykb_kid} is not a valid answer")
+    if not ykb:
+        warnings.append("no YKB Kid (no Sleeper Pick or Hidden Gem)")
     ctx = context_lines(con, p, scored)
     aliases = bank_aliases(con, scored["player_id"].to_list())
     answers = []
@@ -199,7 +198,7 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, 
     return {
         "slot": slot, "id": p.id, "text": p.text, "subtitle": p.subtitle, "type": p.type,
         "tier_group": threshold_kind(p), "answer_count": len(answers),
-        "ykb_kid": ykb, "botched_trick_play": p.botched_trick_play,
+        "ykb_kid": ykb, "ykb_source": info.get("ykb_source"), "botched_trick_play": p.botched_trick_play,
         "answers": answers,
     }, warnings
 
@@ -247,7 +246,7 @@ def cmd_build(drive_filter: int | None, force: bool) -> None:
     sched = load_schedule()
     prompts = load_prompts(ROOT / sched["queue"])
     f_df = fame(con)
-    (DIST / "drives").mkdir(parents=True, exist_ok=True)
+    (DIST / "days").mkdir(parents=True, exist_ok=True)
     write_static(con)
     index, stops = [], []
     for d in sched["drives"]:
@@ -258,13 +257,13 @@ def cmd_build(drive_filter: int | None, force: bool) -> None:
         if hard and not force:
             stops.append((d["drive"], hard))
             continue
-        (DIST / "drives" / f"{d['drive']}.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")))
-        index.append({"drive": d["drive"], "date": d["date"], "file": f"drives/{d['drive']}.json"})
+        (DIST / "days" / f"{d['drive']}.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+        index.append({"drive": d["drive"], "date": d["date"], "file": f"days/{d['drive']}.json"})
         for pid, w in warns.items():
             print(f"  drive {d['drive']} {pid}: {'; '.join(w)}")
     if not drive_filter:
         (DIST / "schedule.json").write_text(json.dumps({"format": FORMAT_VERSION, "launch_date": sched["launch_date"],
-                                                        "drives": index}, indent=1))
+                                                        "rollover": ROLLOVER, "drives": index}, indent=1))
     print(f"wrote {len(index)} drive(s) to {DIST}")
     if stops:
         for drv, hard in stops:
@@ -275,20 +274,20 @@ def cmd_build(drive_filter: int | None, force: bool) -> None:
 # -------------------------------------------------------------- diff report
 
 def cmd_diff(out: Path | None) -> None:
-    """§6 weekly diff report: current build vs the last published dist/ for every scheduled drive."""
+    """§6 weekly diff report: current build vs the last published public/ for every scheduled drive."""
     con = connect(read_only=True)
     sched = load_schedule()
     prompts = load_prompts(ROOT / sched["queue"])
     f_df = fame(con)
     today = dt.date.today()
     lines = [f"# Diff report — {today.isoformat()}", "",
-             "Current build vs last published `dist/`. Upcoming drives only. "
+             "Current build vs last published `public/`. Upcoming drives only. "
              f"Tight = within {TIGHT_MARGIN} of the {MIN_ANSWERS}-answer minimum.", ""]
     flags = []
     for d in sched["drives"]:
         if dt.date.fromisoformat(d["date"]) < today:
             continue
-        old_path = DIST / "drives" / f"{d['drive']}.json"
+        old_path = DIST / "days" / f"{d['drive']}.json"
         old = {p["id"]: p for p in json.loads(old_path.read_text())["prompts"]} if old_path.exists() else {}
         new, warns = build_drive(con, d, prompts, f_df)
         lines.append(f"## Drive {d['drive']} — {d['date']}" + ("" if old else " (not published yet)"))

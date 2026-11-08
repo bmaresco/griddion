@@ -13,7 +13,7 @@ uv run refresh --only build            # re-derive from cached raw tables, no ne
 uv run probe '{"text": "Name a Bears QB", "filters": {"team": "CHI", "position": "QB"}}'
 uv run publish schedule --launch YYYY-MM-DD   # once, from prompts/prompts_14_days.jsonl
 uv run publish diff                            # weekly: reports/diff_<date>.md
-uv run publish build                           # dist/ for the game UI (format in CLAUDE.md §6)
+uv run publish build                           # public/ for the game UI (format in CLAUDE.md §6)
 uv run pytest
 ```
 

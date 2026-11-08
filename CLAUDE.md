@@ -29,7 +29,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | Botched Trick Play | 15 | Optional; the famous "obscure" pick everyone reaches for. Used sparingly |
 | Invalid / no answer | 0 | |
 
-- **YKB Kid** is chosen manually from the Sleeper Pick / Hidden Gem answers. It's the most satisfying deep pull, not necessarily the rarest.
+- **YKB Kid**: one per prompt. **Default: the highest-fame (F) Sleeper Pick; if the prompt has no Sleeper Pick, the highest-fame Hidden Gem.** A prompt can override it with `"ykb_kid": "<player_id>"`. `prompts/ykb_review.md` lists every prompt's pick and context line for a quick skim (`uv run python prompts/ykb_review.py`).
 - **Botched Trick Play** is a **manual option only**: never assigned or suggested by the pipeline. It's used on a handful of prompts at most, and only when explicitly added to a prompt (`"botched_trick_play": "<player_id>"`), which overrides that one answer's tier. **No prompt uses it at launch.** (An automatic suggestion — most famous answer with F ≥ 0.58 and A ≤ 0.35 — was tried on the 14-day draft and all 32 suggestions were rejected.)
 
 ---
@@ -47,6 +47,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 **Known exception — pre-1950 QBs.** The Wikipedia starting-QB lists begin in 1950, so there are no starts before then. Pre-1950 QBs are **not excluded** (Sid Luckman must be a valid Bears QB): they use the roster rule, by listed position (QB on the active roster). `/probe` lists them separately for review.
 
 **QB starts source.** Wikipedia's "List of [team] starting quarterbacks" is the primary source for **every season**. nflverse is the cross-check. The exception is **Green Bay and the Rams from 1999 on**, where the Wikipedia pages give only per-player totals, so nflverse is used. Reason: nflverse's schedule `qb_id` is the QB with the most passes, not the starter (e.g. it credits Garoppolo with Brady's 2014 week 17 start and shows Jayden Daniels with 12 of his 17 2024 starts). Current-season mismatches between the two are **flagged in `/probe` and the diff report, never silently resolved**.
+- **Current season (decided 2026-11-08):** Wikipedia's current-season rows lag in season (e.g. Jalen Hurts 2 vs 6 starts), so **the current season's QB starts come from nflverse** (`build.QB_CURRENT_SEASON_FROM_NFLVERSE`). The mismatch flag stays on; switch the current season back to Wikipedia once its rows are complete.
 
 **Roster status** (codes from nflverse's `dictionary_roster_status`):
 
@@ -160,36 +161,37 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 
 ### Published files (the contract the game UI reads)
 
-`uv run publish build` writes `dist/` (not committed; deployed with the site). `format` is `1` in every file; bump it on any breaking change.
+`uv run publish build` writes `public/` (committed; deployed as static files with the site). `format` is `1` in every file; bump it on any breaking change.
 
-**`dist/schedule.json`** — which drive is when.
+**`public/schedule.json`** — which drive is when.
 ```json
-{ "format": 1, "launch_date": "2027-01-05",
-  "drives": [ { "drive": 1, "date": "2027-01-05", "file": "drives/1.json" }, … ] }
+{ "format": 1, "launch_date": "2026-11-09",
+  "rollover": { "time": "00:00", "timezone": "America/New_York" },
+  "drives": [ { "drive": 1, "date": "2026-11-09", "file": "days/1.json" }, … ] }
 ```
-The UI picks today's drive by the viewer's local date: `drive = (today − launch_date).days + 1` (§9).
+The UI picks today's drive from **the current date in America/New_York** (everyone gets the new drive at midnight Eastern): `drive = (today_ET − launch_date).days + 1` (§9).
 
-**`dist/drives/<n>.json`** — one drive: 7 prompts with their full answer banks.
+**`public/days/<drive#>.json`** — one drive: 7 prompts with their full answer banks.
 ```json
-{ "format": 1, "drive": 1, "date": "2027-01-05",
+{ "format": 1, "drive": 1, "date": "2026-11-09",
   "data_version": "2026-11-08T16:30:22", "thresholds_frozen_at": "2026-11-08",
   "prompts": [ {
       "slot": 1, "id": "d01-1",
       "text": "Name a Browns QB",
       "subtitle": "All seasons (franchise history) · QBs must have started a regular-season game",
       "type": "team", "tier_group": "other", "answer_count": 69,
-      "ykb_kid": null, "botched_trick_play": null,
+      "ykb_kid": "DAW622932", "ykb_source": "default", "botched_trick_play": null,
       "answers": [ {
           "id": "00-0034855", "name": "Baker Mayfield", "tier": "Starter",
           "context": "59 starts · 2018–21",
           "names": ["Baker Mayfield"], "last_names": ["Mayfield"], "r": 0.631 }, … ] }, … ] }
 ```
 - `answers` are sorted by `r` (R′) descending: the formula's order, most recallable first.
-- `tier` is one of Starter · Backup · Hidden Gem · Sleeper Pick · YKB Kid · Botched Trick Play (the last two only where the prompt sets `ykb_kid` / `botched_trick_play`).
+- `tier` is one of Starter · Backup · Hidden Gem · Sleeper Pick · YKB Kid · Botched Trick Play. Exactly one answer per prompt is `YKB Kid` (its id is `ykb_kid`; `ykb_source` is `default` or `override`). Botched Trick Play appears only where a prompt sets it.
 - `names` = every full-name form to match on; `last_names` = last-name forms. The UI adds first-name variants from `matching.json`.
 - `id` is the stable player id used in answer logging (§9).
 
-**`dist/game.json`** — scoring and drive rules (§2, §9).
+**`public/game.json`** — scoring and drive rules (§2, §9).
 ```json
 { "format": 1,
   "tiers": { "Starter": { "points": 10, "yards": 2, "square": "⬜" }, …, "Incomplete": { "points": 0, "yards": 0, "square": "⬛" } },
@@ -197,7 +199,7 @@ The UI picks today's drive by the viewer's local date: `drive = (today − launc
              "clock_start_seconds": 175, "seconds_per_play": 25, "plays": 7 } }
 ```
 
-**`dist/matching.json`** — shared matcher data (§9 answer matching).
+**`public/matching.json`** — shared matcher data (§9 answer matching).
 ```json
 { "format": 1,
   "first_name_groups": [ ["michael", "mike", "mikey"], … ],
@@ -208,7 +210,7 @@ The UI picks today's drive by the viewer's local date: `drive = (today − launc
 
 ### Scheduling and publish flow
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
-- **`uv run publish build`** exports every scheduled drive. It refuses to publish a drive with any prompt under 25 answers (`--force` overrides) and warns on prompts with no YKB Kid chosen.
+- **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
 - **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
@@ -414,7 +416,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **TD before play 7:** all 7 plays are still played and scored. The ball stays in the end zone, the remaining plays show as running out the clock, and the result reads `TOUCHDOWN on P<n>`.
 
 **Drive, streak, record**
-- **Drive #** = days since launch, the same for everyone. **Launch day is Drive #1** (`(date − launch_date).days + 1`).
+- **Drive #** = days since launch, the same for everyone. **Launch: 2026-11-09 = Drive #1**; the drive rolls over at **00:00 America/New_York** (`(today_ET − launch_date).days + 1`).
 - **Streak** = consecutive days played. A separate **W–L record**. Both in local storage.
 
 **Anonymous answer logging**

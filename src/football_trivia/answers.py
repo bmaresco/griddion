@@ -53,13 +53,14 @@ class Prompt:
     type: str = ""
     subtitle: str = ""
     botched_trick_play: str | None = None  # player_id, set by hand only (§2)
+    ykb_kid: str | None = None             # player_id override; default chosen by scoring (§2)
 
     @classmethod
     def from_json(cls, obj: dict | str) -> "Prompt":
         d = json.loads(obj) if isinstance(obj, str) else obj
         return cls(filters=d.get("filters", {}), text=d.get("text", ""), id=d.get("id", ""),
                    type=d.get("type", ""), subtitle=d.get("subtitle", ""),
-                   botched_trick_play=d.get("botched_trick_play"))
+                   botched_trick_play=d.get("botched_trick_play"), ykb_kid=d.get("ykb_kid"))
 
     @property
     def is_trait(self) -> bool:

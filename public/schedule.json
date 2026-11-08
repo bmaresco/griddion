@@ -1,0 +1,80 @@
+{
+ "format": 1,
+ "launch_date": "2026-11-09",
+ "rollover": {
+  "time": "00:00",
+  "timezone": "America/New_York"
+ },
+ "drives": [
+  {
+   "drive": 1,
+   "date": "2026-11-09",
+   "file": "days/1.json"
+  },
+  {
+   "drive": 2,
+   "date": "2026-11-10",
+   "file": "days/2.json"
+  },
+  {
+   "drive": 3,
+   "date": "2026-11-11",
+   "file": "days/3.json"
+  },
+  {
+   "drive": 4,
+   "date": "2026-11-12",
+   "file": "days/4.json"
+  },
+  {
+   "drive": 5,
+   "date": "2026-11-13",
+   "file": "days/5.json"
+  },
+  {
+   "drive": 6,
+   "date": "2026-11-14",
+   "file": "days/6.json"
+  },
+  {
+   "drive": 7,
+   "date": "2026-11-15",
+   "file": "days/7.json"
+  },
+  {
+   "drive": 8,
+   "date": "2026-11-16",
+   "file": "days/8.json"
+  },
+  {
+   "drive": 9,
+   "date": "2026-11-17",
+   "file": "days/9.json"
+  },
+  {
+   "drive": 10,
+   "date": "2026-11-18",
+   "file": "days/10.json"
+  },
+  {
+   "drive": 11,
+   "date": "2026-11-19",
+   "file": "days/11.json"
+  },
+  {
+   "drive": 12,
+   "date": "2026-11-20",
+   "file": "days/12.json"
+  },
+  {
+   "drive": 13,
+   "date": "2026-11-21",
+   "file": "days/13.json"
+  },
+  {
+   "drive": 14,
+   "date": "2026-11-22",
+   "file": "days/14.json"
+  }
+ ]
+}

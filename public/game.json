@@ -1,0 +1,55 @@
+{
+ "format": 1,
+ "tiers": {
+  "Starter": {
+   "points": 10,
+   "square": "⬜",
+   "yards": 2
+  },
+  "Botched Trick Play": {
+   "points": 15,
+   "square": "🟧",
+   "yards": 3
+  },
+  "Backup": {
+   "points": 30,
+   "square": "🟦",
+   "yards": 6
+  },
+  "Hidden Gem": {
+   "points": 60,
+   "square": "🟩",
+   "yards": 12
+  },
+  "Sleeper Pick": {
+   "points": 85,
+   "square": "🟪",
+   "yards": 17
+  },
+  "YKB Kid": {
+   "points": 100,
+   "square": "🟨",
+   "yards": 20
+  },
+  "Incomplete": {
+   "points": 0,
+   "square": "⬛",
+   "yards": 0
+  }
+ },
+ "drive": {
+  "start_yardline": 25,
+  "touchdown_yards": 75,
+  "trail": [
+   17,
+   21
+  ],
+  "win": [
+   24,
+   21
+  ],
+  "clock_start_seconds": 175,
+  "seconds_per_play": 25,
+  "plays": 7
+ }
+}

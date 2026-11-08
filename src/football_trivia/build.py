@@ -348,6 +348,9 @@ POSITION_GROUPS = {
     "K": "K", "P": "P", "LS": "LS",
 }
 ACTIVE = "('ACT')"
+# §3: the current season's Wikipedia rows lag in season, so its QB starts come from nflverse.
+# Set to False once the current season's Wikipedia rows are complete (the mismatch flag stays on).
+QB_CURRENT_SEASON_FROM_NFLVERSE = True
 ACTIVE_PRE_1989 = "('ACT', 'TRC', 'TRD', 'TRT')"  # no practice squads before 1989 (§3)
 UNCONFIRMED = "('RES', 'PUP', 'RSN', 'CUT', 'INA', 'NWT', 'SUS', 'EXE', 'TRC', 'TRD', 'TRT')"
 
@@ -364,16 +367,19 @@ def _team_seasons(con, log) -> None:
     groups = pl.DataFrame({"code": list(POSITION_GROUPS), "pos_group": list(POSITION_GROUPS.values())})
     write_table(con, "position_groups", groups)
 
-    # QB starts per §3: Wikipedia every season, except GB/LA from 1999 (nflverse)
-    run(con, """
+    # QB starts per §3: Wikipedia every season, except GB/LA from 1999 and (while its rows lag)
+    # the current season, which come from nflverse
+    current = con.execute("SELECT max(season) FROM raw_schedules WHERE home_score IS NOT NULL").fetchall()[0][0]
+    cur = current if QB_CURRENT_SEASON_FROM_NFLVERSE else -1
+    run(con, f"""
     CREATE OR REPLACE TABLE qb_starts_final AS
     SELECT player_id, franchise, season, starts, 'wikipedia' AS source, basis
     FROM (SELECT player_id, franchise, season, sum(starts) starts, string_agg(DISTINCT basis, ',') basis
           FROM qb_list_starts WHERE player_id IS NOT NULL GROUP BY ALL)
-    WHERE NOT (franchise IN ('GB', 'LA') AND season >= 1999)
+    WHERE NOT (franchise IN ('GB', 'LA') AND season >= 1999) AND season <> {cur}
     UNION ALL
     SELECT player_id, franchise, season, count(*)::DOUBLE, 'nflverse', 'games'
-    FROM qb_starts WHERE game_type = 'REG' AND franchise IN ('GB', 'LA') AND season >= 1999
+    FROM qb_starts WHERE game_type = 'REG' AND ((franchise IN ('GB', 'LA') AND season >= 1999) OR season = {cur})
     GROUP BY ALL
     """)
 

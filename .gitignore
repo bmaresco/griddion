@@ -2,5 +2,4 @@
 __pycache__/
 data/*.duckdb
 data/*.duckdb.wal
-dist/
 reports/
