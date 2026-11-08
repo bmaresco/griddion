@@ -1,8 +1,8 @@
-# Football Rare-Answer Trivia — Project Spec
+# Gridion — Project Spec
 
 A daily football trivia game. Each day has a set of prompts ("Name a Bears QB"). Players type one answer per prompt against a timer. Any valid answer scores, and **the more obscure the answer is for that specific question, the more it's worth.**
 
-> Working title TBD. Inspired by the rare-answer mechanic of Krillion, but uses none of its name, branding, or tier names.
+> **Gridion** ([gridion.io](https://gridion.io)). Inspired by the rare-answer mechanic of Krillion, but uses none of its name, branding, or tier names.
 
 ---
 
@@ -281,4 +281,4 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Honors weights within F
 - Backlog: Wikipedia milestone lists for marquee stat thresholds (2,000-yd rushing season, 5,000-yd passing season, …) where a clean list exists, so those prompts can cover all eras
 - Games-fallback approval for QBs (pending comparison test)
-- Game title
+- ~~Game title~~ — **resolved:** Gridion (gridion.io)
