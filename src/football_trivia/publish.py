@@ -6,6 +6,10 @@
     uv run publish diff                  # weekly refresh diff report vs the last published public/
     uv run publish schedule --launch 2026-11-09   # (re)write the schedule from the prompt queue
 
+Frozen drives (§6): a drive is frozen once it goes live (00:00 ET on its date), and every drive
+up to `frozen_through` in prompts/schedule.json is frozen too. Frozen drives are never rebuilt:
+build/diff read them back from public/days/<n>.json (their YKB Kids still count for the window).
+
 Weekly flow in season: `refresh --skip pageviews` (or full) -> `publish diff` (review) -> `publish build`.
 """
 
@@ -16,6 +20,7 @@ import datetime as dt
 import json
 import sys
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import polars as pl
 
@@ -32,6 +37,7 @@ SCHEDULE = ROOT / "prompts" / "schedule.json"
 QUEUE = ROOT / "prompts" / "prompts_14_days.jsonl"
 REPORTS = ROOT / "reports"
 MIN_SLEEPERS = 3  # §6: a prompt ships only with at least 3 Sleeper Picks besides the YKB Kid
+YKB_WINDOW = 14   # §2: a player is YKB Kid at most once in any 14-day window
 
 # §2 points, §9 yards (= points / 5) and share squares
 TIER_INFO = {
@@ -46,12 +52,25 @@ TIER_INFO = {
 for v in TIER_INFO.values():
     v["yards"] = v["points"] // 5
 
+AWARD_LABEL = {"mvp": "MVP", "opoy": "OPOY", "dpoy": "DPOY", "oroy": "OROY", "droy": "DROY", "comeback": "CPOY"}
+
 STAT_UNIT = {"passing_yards": "yds", "rushing_yards": "yds", "receiving_yards": "yds", "scrimmage_yards": "yds",
              "passing_tds": "TD", "rushing_tds": "TD", "receiving_tds": "TD", "receptions": "rec",
              "sacks": "sacks", "interceptions": "INT", "field_goals": "FG"}
 
 
 # ------------------------------------------------------------------ schedule
+
+def today_et() -> dt.date:
+    return dt.datetime.now(ZoneInfo(ROLLOVER["timezone"])).date()
+
+
+def is_frozen(drive: dict, sched: dict, today: dt.date | None = None) -> bool:
+    """§6: a drive is frozen once it goes live (00:00 ET on its date), or if it is at or before
+    the schedule's `frozen_through`. A frozen drive is never regenerated."""
+    today = today or today_et()
+    return dt.date.fromisoformat(drive["date"]) <= today or drive["drive"] <= int(sched.get("frozen_through", 0))
+
 
 def drive_number(day: dt.date, launch: dt.date) -> int:
     """§9: Drive # = days since launch, the same for everyone. Launch day is Drive #1."""
@@ -68,6 +87,14 @@ def write_schedule(launch: dt.date, queue: Path = QUEUE) -> dict:
     sched = {"launch_date": launch.isoformat(), "rollover": ROLLOVER, "queue": str(queue.relative_to(ROOT)),
              "drives": [{"drive": d, "date": (launch + dt.timedelta(days=d - 1)).isoformat(), "prompt_ids": ids}
                         for d, ids in sorted(days.items())]}
+    if SCHEDULE.exists():  # §6: never move or change a frozen drive
+        old = json.loads(SCHEDULE.read_text())
+        if "frozen_through" in old:
+            sched["frozen_through"] = old["frozen_through"]
+        new = {d["drive"]: d for d in sched["drives"]}
+        for d in old["drives"]:
+            if is_frozen(d, old) and new.get(d["drive"]) != d:
+                sys.exit(f"drive {d['drive']} is frozen (§6); the new schedule would change it")
     SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
     return sched
 
@@ -114,13 +141,26 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                   AND season BETWEEN ? AND ? GROUP BY 1""",
                 awards + [int(f.get("season_min", 0)), int(f.get("season_max", 9999))]).fetchall()
             return {pid: "Won " + ", ".join(str(s) for s in seasons) for pid, seasons in rows}
+        if "award_any" in f:  # "MVP 2007, 2010 · OPOY 2007": which award(s), in the prompt's order
+            awards = [a.lower() for a in _as_list(f["award_any"])]
+            rows = con.execute(f"""
+                SELECT player_id, award, list(DISTINCT season ORDER BY season) FROM player_awards
+                WHERE player_id IN (SELECT player_id FROM _ids) AND award IN ({', '.join('?' * len(awards))})
+                  AND season BETWEEN ? AND ? GROUP BY 1, 2""",
+                awards + [int(f.get("season_min", 0)), int(f.get("season_max", 9999))]).fetchall()
+            parts: dict[str, dict[str, list[int]]] = {}
+            for pid, a, seasons in rows:
+                parts.setdefault(pid, {})[a] = seasons
+            return {pid: " · ".join(f"{AWARD_LABEL.get(a, a.upper())} {', '.join(map(str, d[a]))}"
+                                    for a in awards if a in d) for pid, d in parts.items()}
         if st := f.get("stat_threshold"):
             expr, unit = STATS[st["stat"]], STAT_UNIT[st["stat"]]
             rows = con.execute(f"""
-                SELECT player_id, arg_max(season, v), max(v) FROM (
-                    SELECT player_id, season, sum({expr}) v FROM raw_player_week
-                    WHERE season_type = 'REG' AND player_id IN (SELECT player_id FROM _ids)
-                      AND season BETWEEN ? AND ? GROUP BY 1, 2)
+                SELECT player_id, min(season) FILTER (WHERE v = mv), max(v) FROM (  -- ties: earliest season
+                    SELECT *, max(v) OVER (PARTITION BY player_id) mv FROM (
+                        SELECT player_id, season, sum({expr}) v FROM raw_player_week
+                        WHERE season_type = 'REG' AND player_id IN (SELECT player_id FROM _ids)
+                          AND season BETWEEN ? AND ? GROUP BY 1, 2))
                 WHERE v >= ? GROUP BY 1""", [int(f.get("season_min", 1999)), int(f.get("season_max", 9999)), st["min"]]).fetchall()
             fmt = lambda v: f"{v:,.1f}".rstrip("0").rstrip(".") if v != int(v) else f"{int(v):,}"
             return {pid: f"{fmt(v)} {unit} · {season}" for pid, season, v in rows}
@@ -158,7 +198,7 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                 n = rows["season"].n_unique()
                 out[pid] = f"{n} season{'s' * (n != 1)} · {span}"
         else:  # era / conference / division: "Colts, Bills · 1990–97"
-            order = rows.group_by("franchise").agg(pl.col("season").min()).sort("season")["franchise"].to_list()
+            order = rows.group_by("franchise").agg(pl.col("season").min()).sort(["season", "franchise"])["franchise"].to_list()
             names = [FRANCHISE_NAMES.get(t, t) for t in order]
             label = ", ".join(names[:3]) + (f" +{len(names) - 3}" if len(names) > 3 else "")
             out[pid] = f"{label} · {_span(rows['season'].min(), rows['season'].max())}"
@@ -167,17 +207,20 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
 
 # ------------------------------------------------------------------- export
 
-def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, list[str]]:
+def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame,
+                  ykb_exclude: set[str] | None = None) -> tuple[dict, list[str]]:
     """One prompt's answer bank in the §6 export format, plus publish warnings."""
     p = Prompt.from_json(obj)
     r = build_answers(con, p)
-    scored, info = score_answers(con, r, f_df)
+    scored, info = score_answers(con, r, f_df, ykb_exclude)
     warnings = list(r.warnings)
     if r.n < MIN_ANSWERS:
         warnings.append(f"HARD STOP: {r.n} answers")
     ykb = info.get("ykb_kid")
     if p.ykb_kid and p.ykb_kid not in scored["player_id"].to_list():
         warnings.append(f"ykb_kid override {p.ykb_kid} is not a valid answer")
+    if p.ykb_kid and ykb_exclude and p.ykb_kid in ykb_exclude:
+        warnings.append(f"ykb_kid override {p.ykb_kid} was already YKB Kid in the last {YKB_WINDOW} days")
     if not ykb:
         warnings.append("no YKB Kid (no Sleeper Pick or Hidden Gem)")
     n_sleepers = int((scored["tier"] == "Sleeper Pick").sum())  # YKB Kid already re-tiered
@@ -208,10 +251,39 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame) -> tuple[dict, 
     }, warnings
 
 
-def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame) -> tuple[dict, dict[str, list[str]]]:
+def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame):
+    """Yield (drive, data, warnings) for every scheduled drive in order. YKB Kids are chosen
+    with the §2 window rule, so earlier drives are always built first."""
+    hist: dict[int, list[str]] = {}
+    today = today_et()
+    for d in sched["drives"]:
+        if is_frozen(d, sched, today):
+            # §6: frozen drives are read back as published, never rebuilt
+            path = DIST / "days" / f"{d['drive']}.json"
+            if not path.exists():
+                sys.exit(f"drive {d['drive']} is frozen (§6) but {path} is missing")
+            data = json.loads(path.read_text())
+            hist[d["drive"]] = [e["ykb_kid"] for e in data["prompts"] if e["ykb_kid"]]
+            yield {**d, "frozen": True}, data, {}
+            continue
+        data, warns, picks = build_drive(con, d, prompts, f_df, window_exclude(hist, d["drive"]))
+        hist[d["drive"]] = picks
+        yield d, data, warns
+
+
+def window_exclude(hist: dict[int, list[str]], drive: int) -> set[str]:
+    return {pid for n, picks in hist.items() if drive - YKB_WINDOW < n < drive for pid in picks}
+
+
+def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame,
+                ykb_exclude: set[str] | None = None) -> tuple[dict, dict[str, list[str]], list[str]]:
+    """-> (drive file, warnings per prompt, YKB Kid ids)."""
     out, warns = [], {}
+    used = set(ykb_exclude or set())
     for slot, pid in enumerate(drive["prompt_ids"], 1):
-        e, w = export_prompt(con, prompts[pid], slot, f_df)
+        e, w = export_prompt(con, prompts[pid], slot, f_df, used)
+        if e["ykb_kid"]:
+            used.add(e["ykb_kid"])  # also unique within the drive
         out.append(e)
         if w:
             warns[pid] = w
@@ -223,7 +295,7 @@ def build_drive(con, drive: dict, prompts: dict[str, dict], f_df: pl.DataFrame) 
         "data_version": data_version.isoformat() if data_version else None,
         "thresholds_frozen_at": (load_thresholds() or {}).get("frozen_at"),
         "prompts": out,
-    }, warns
+    }, warns, [e["ykb_kid"] for e in out if e["ykb_kid"]]
 
 
 def write_static(con) -> None:
@@ -254,10 +326,13 @@ def cmd_build(drive_filter: int | None, force: bool) -> None:
     (DIST / "days").mkdir(parents=True, exist_ok=True)
     write_static(con)
     index, stops = [], []
-    for d in sched["drives"]:
+    for d, data, warns in built_drives(con, sched, prompts, f_df):
         if drive_filter and d["drive"] != drive_filter:
             continue
-        data, warns = build_drive(con, d, prompts, f_df)
+        if d.get("frozen"):  # §6: never rewritten, not even with --force
+            index.append({"drive": d["drive"], "date": d["date"], "file": f"days/{d['drive']}.json"})
+            print(f"  drive {d['drive']}: frozen, left as published")
+            continue
         hard = {k: w for k, w in warns.items() if any(x.startswith("HARD STOP") for x in w)}
         if hard and not force:
             stops.append((d["drive"], hard))
@@ -284,17 +359,16 @@ def cmd_diff(out: Path | None) -> None:
     sched = load_schedule()
     prompts = load_prompts(ROOT / sched["queue"])
     f_df = fame(con)
-    today = dt.date.today()
+    today = today_et()
     lines = [f"# Diff report — {today.isoformat()}", "",
-             "Current build vs last published `public/`. Upcoming drives only. "
+             "Current build vs last published `public/`. Unfrozen drives only (§6). "
              f"Tight = within {TIGHT_MARGIN} of the {MIN_ANSWERS}-answer minimum.", ""]
     flags = []
-    for d in sched["drives"]:
-        if dt.date.fromisoformat(d["date"]) < today:
+    for d, new, warns in built_drives(con, sched, prompts, f_df):
+        if d.get("frozen"):  # §6: live, past, or frozen_through — nothing to diff
             continue
         old_path = DIST / "days" / f"{d['drive']}.json"
         old = {p["id"]: p for p in json.loads(old_path.read_text())["prompts"]} if old_path.exists() else {}
-        new, warns = build_drive(con, d, prompts, f_df)
         lines.append(f"## Drive {d['drive']} — {d['date']}" + ("" if old else " (not published yet)"))
         for p in new["prompts"]:
             n = p["answer_count"]

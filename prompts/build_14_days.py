@@ -172,13 +172,26 @@ AWARD_CYCLE = ["mvp", "dpoy", "oroy", "droy", "comeback"]
 AWARD_TEXT = {"mvp": ("Name an AP MVP", 1957), "dpoy": ("Name an AP Defensive Player of the Year", 1971),
               "oroy": ("Name an AP Offensive Rookie of the Year", 1967), "droy": ("Name an AP Defensive Rookie of the Year", 1967),
               "comeback": ("Name an AP Comeback Player of the Year", 1998)}
-COMEBACK_FALLBACK = None  # "oroy" if Comeback fails the Sleeper rule
+# AP Comeback is retired (2026-11-08, spec §6): its 27-winner pool can't meet the Sleeper rule
+# under award F = s_pv. Its two slots take the first two "either award" candidates that passed
+# both publish rules, in the order probed: ROY (O or D), then MVP or OPOY.
+def award_any(awards, lo):
+    return ("trait", {"award_any": awards, "season_min": lo, "season_max": 2025}, f"{lo}–2025 seasons")
+
+COMEBACK_REPLACEMENTS = [
+    ("Name an AP Rookie of the Year (offense or defense)", award_any(["oroy", "droy"], 1967)),   # Day 5
+    ("Name an AP MVP or Offensive Player of the Year", award_any(["mvp", "opoy"], 1957)),          # Day 10
+]
+replaced = 0
 for i, day in enumerate(DAYS):
     a = AWARD_CYCLE[i % 5]
-    if a == "comeback" and COMEBACK_FALLBACK:
-        a = COMEBACK_FALLBACK
+    if a == "comeback":
+        day[6] = COMEBACK_REPLACEMENTS[replaced]
+        replaced += 1
+        continue
     text, lo = AWARD_TEXT[a]
     day[6] = (text, award(a, lo))
+assert replaced == len(COMEBACK_REPLACEMENTS)
 
 assert len(DAYS) == 14 and all(len(d) == 7 for d in DAYS)
 out = Path(__file__).with_suffix("").parent / "prompts_14_days.jsonl"

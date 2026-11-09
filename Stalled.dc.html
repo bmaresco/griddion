@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Griddion drive stalled</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&amp;family=Silkscreen:wght@400;700&amp;family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#c8352f}a:hover{color:#8e2330}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes jump{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes flash{0%,90%{opacity:0}93%{opacity:1}96%,100%{opacity:0}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0.3}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #160f33; color: #1d1a14; font-family: 'Courier Prime', monospace; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+
+<div style="position: relative; height: 266px; flex: none; background: #0f0b26; overflow: hidden">
+<sc-for list="{{decor}}" as="d" hint-placeholder-count="30"><div aria-hidden="true" style="{{d.style}}"></div></sc-for>
+<div aria-hidden="true" style="position: absolute; left: 96px; top: 240px; width: 8px; height: 26px; background: #2b2b33"></div>
+<div aria-hidden="true" style="position: absolute; left: 286px; top: 240px; width: 8px; height: 26px; background: #2b2b33"></div>
+<div style="position: absolute; left: 40px; top: 12px; width: 310px; box-sizing: border-box; background: #2b2b33; border: 3px solid #0a0a10; padding: 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="height: 26px; background: #c8352f; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; color: #f3ead7">
+<span style="font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px; letter-spacing: 2px">GRIDDION</span>
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px">STREAK 5 · 3W 2L</span>
+</div>
+<div style="height: 160px; box-sizing: border-box; background-color: #050505; background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.3px); background-size: 3px 3px; padding: 14px 12px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: 'DotGothic16', monospace; text-align: center">
+<h1 style="margin: 0; font-weight: 400; font-size: 32px; line-height: 1; color: #ff8a80; animation: blink 1s steps(1,end) infinite">DRIVE STALLED</h1>
+<div style="display: flex; align-items: baseline; gap: 14px">
+<span style="font-size: 16px; line-height: 1; color: #6fb4ff">YOU</span>
+<span style="font-size: 32px; line-height: 1; color: #ffb43a">17</span>
+<span style="font-size: 16px; line-height: 1; color: #c98a2e">–</span>
+<span style="font-size: 32px; line-height: 1; color: #ffb43a">21</span>
+<span style="font-size: 16px; line-height: 1; color: #ff8a80">AWAY</span>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1; color: #c98a2e">255 PTS · 51 YDS · 7 PLAYS</p>
+<div style="flex: 1 1 auto"></div>
+<div style="display: flex; gap: 6px; align-items: center">
+<sc-for list="{{squares}}" as="q" hint-placeholder-count="7"><span style="{{q.style}}"></span></sc-for>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px; color: #f3ead7">
+<span>DRIVE #12 COMPLETE</span>
+<span>PTS 255</span>
+</div>
+</div>
+</div>
+
+<div role="img" aria-label="Pixel football field. Time has run out with the ball on the opponent's 24-yard line. The defense and the visiting sideline celebrate while your players stand around the ball." style="position: relative; width: 360px; height: 200px; overflow: hidden; border: 3px solid #0a0820; flex: none; align-self: center">
+<sc-for list="{{f.bg}}" as="b" hint-placeholder-count="16"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.lines}}" as="b" hint-placeholder-count="20"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.nums}}" as="n" hint-placeholder-count="9"><div style="{{n.style}}">{{n.label}}</div></sc-for>
+<sc-for list="{{f.under}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}"></div></sc-for>
+<sc-for list="{{f.sprites}}" as="s" hint-placeholder-count="40"><div style="{{s.style}}"></div></sc-for>
+<sc-for list="{{f.over}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}"></div></sc-for>
+</div>
+
+<div style="margin: 0 12px; background: #1d1d22; border: 3px solid #0a0a10; padding: 6px">
+<div style="border: 2px dashed #55555f; padding: 6px">
+<div style="background: #efe6cf; padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-family: 'Silkscreen', monospace; font-size: 16px; font-weight: 700">DRIVE CHART</span>
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12px; color: #c8352f">24 YDS SHORT · RECORD 3–2</span>
+</div>
+<div aria-label="Drive chart" style="display: flex; flex-direction: column; border-top: 2px solid #1d1a14">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 18px 1fr 96px 36px; align-items: center; gap: 8px; height: 26px; border-bottom: 1px solid #b9ad8c">
+<span style="font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12px; color: #6b6253">{{r.n}}</span>
+<span style="font-size: 16px; white-space: nowrap">{{r.play}}</span>
+<span style="{{r.tag}}">{{r.tier}}</span>
+<span style="font-weight: 700; font-size: 16px; text-align: right">{{r.yd}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px; margin-top: 4px">
+<button type="button" style="flex: 1 1 0; height: 50px; background: #c8352f; color: #f3ead7; border: 3px solid #1d1a14; box-shadow: 3px 3px 0 0 #1d1a14; font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 16px; cursor: pointer">SHARE</button>
+<a href="Answers.dc.html" style="flex: 1 1 0; height: 50px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-decoration: none; background: transparent; color: #1d1a14; border: 3px solid #1d1a14; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 15px; letter-spacing: 1px">ALL ANSWERS</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  tiers() {
+    return {
+      starter: { name: 'STARTER', long: 'Run up the middle', yd: 2, c: '#7a8191', led: '#c3c8d4', ink: '#f3ead7' },
+      trick: { name: 'TRICK PLAY', long: 'Reverse, stuffed', yd: 3, c: '#d4661c', led: '#ff9a52', ink: '#1d1a14' },
+      backup: { name: 'BACKUP', long: 'Quick slant', yd: 6, c: '#1f6fd1', led: '#6fb4ff', ink: '#f3ead7' },
+      gem: { name: 'HIDDEN GEM', long: 'Deep out', yd: 12, c: '#198a4a', led: '#5fe08f', ink: '#f3ead7' },
+      sleeper: { name: 'SLEEPER PICK', long: 'Deep bomb', yd: 17, c: '#7b3fc4', led: '#c89bff', ink: '#f3ead7' },
+      ykb: { name: 'YKB KID', long: 'Hail Mary', yd: 20, c: '#e0a800', led: '#ffd23f', ink: '#1d1a14' },
+      miss: { name: 'NO GAIN', long: 'Incomplete', yd: 0, c: '#4a4a55', led: '#55555f', ink: '#f3ead7' }
+    };
+  }
+  px(map, pal, x, y, p, anim) {
+    var sh = [];
+    for (var r = 0; r < map.length; r++) {
+      for (var c = 0; c < map[r].length; c++) {
+        var k = map[r].charAt(c);
+        if (k !== '.' && pal[k]) sh.push(((c + 1) * p) + 'px ' + ((r + 1) * p) + 'px 0 0 ' + pal[k]);
+      }
+    }
+    return { y: y, style: 'position:absolute;left:' + (x - p) + 'px;top:' + (y - p) + 'px;width:' + p + 'px;height:' + p + 'px;box-shadow:' + sh.join(',') + (anim ? ';' + anim : '') };
+  }
+  box(x, y, w, h, bg, extra) {
+    return { style: 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + bg + (extra ? ';' + extra : '') };
+  }
+  crowd(y0, y1, near) {
+    var pal = near
+      ? ['#2f5bd3', '#f4f4ee', '#2f5bd3', '#d9a27a', '#1d3b8f', '#c8352f', '#2f5bd3', '#6b4429', '#f1c9a5', '#ffd23f']
+      : ['#23317a', '#77779a', '#23317a', '#7a5a45', '#1a2558', '#7a2420', '#23317a', '#3e2a1c'];
+    var out = [], r = 0;
+    for (var y = y0; y <= y1; y += 6, r++) {
+      var x0 = 1 + (r % 2) * 2, first = null, sh = [];
+      for (var x = x0, c = 0; x < 388; x += 5, c++) {
+        var col = pal[(r * 31 + c * 17 + (c * c) % 7) % pal.length];
+        if (first === null) { first = col; continue; }
+        sh.push((x - x0) + 'px 0 0 0 ' + col);
+      }
+      out.push({ style: 'position:absolute;left:' + x0 + 'px;top:' + y + 'px;width:3px;height:4px;background:' + first + ';box-shadow:' + sh.join(',') });
+    }
+    return out;
+  }
+  stadium() {
+    var d = [];
+    for (var s = 0; s < 16; s++) d.push(this.box((s * 97 + 23) % 380 + 5, 4 + (s * 41) % 88, 2, 2, '#8f8ac2'));
+    d.push(this.box(0, 96, 390, 170, '#211a45'));
+    d = d.concat(this.crowd(100, 166, false), this.crowd(172, 262, true));
+    var self = this;
+    [6, 360].forEach(function (hx) {
+      d.push(self.box(hx + 10, 30, 4, 120, '#3a3550'));
+      d.push(self.box(hx, 14, 24, 18, '#4a4466'));
+      for (var a = 0; a < 3; a++) for (var b = 0; b < 2; b++) d.push(self.box(hx + 3 + a * 7, 17 + b * 7, 5, 5, '#fff6c8'));
+    });
+    return d;
+  }
+  field(o) {
+    var self = this, F = 40;
+    var X = function (yd) { return 30 + 3 * yd; };
+    var HOME = { T: '#2f5bd3', J: '#2f5bd3', W: '#f4f4ee', P: '#e9e3cf', K: '#141414', G: '#c9ced6' };
+    var AWAY = { T: '#c8352f', J: '#c8352f', W: '#f4f4ee', P: '#f4f4ee', K: '#141414', G: '#c9ced6' };
+    var PR = ['.TTT.', 'TTTGG', '.TTT.', 'JJJJJ', 'JJWJJ', '.JJJ.', '.PPP.', '.P.P.', '.K.K.'];
+    var PL = ['.TTT.', 'GGTTT', '.TTT.', 'JJJJJ', 'JJWJJ', '.JJJ.', '.PPP.', '.P.P.', '.K.K.'];
+    var CHEER = ['T.TTT.T', 'J.GGT.J', 'J.TTT.J', 'JJJJJJJ', '..JWJ..', '..JJJ..', '..PPP..', '..P.P..', '..K.K..'];
+    var SLUMP = ['.....', '.TTT.', 'TTTGG', '.TTT.', 'JJJJJ', 'JJWJJ', '.PPP.', '.P.P.', '.K.K.'];
+    var COACH = ['.CCC.', 'CCCCC', '.SSS.', 'QQQQQ', 'QQQQQ', '.QQQ.', '.BBB.', '.B.B.', '.K.K.'];
+    var REF = ['.WWW.', '.SSS.', '.SSS.', 'WKWKW', 'WKWKW', '.WKW.', '.KKK.', '.K.K.', '.K.K.'];
+    var BALL = ['.BBBB.', 'BWWWWB', '.BBBB.'];
+    var skins = ['#f1c9a5', '#d9a27a', '#a8714a', '#6b4429'];
+    var cp = function (i, q) { return { C: q, S: skins[i % 4], Q: q, B: '#c8b48a', K: '#141414' }; };
+    var still = function (k) { return 'animation:idle 2.4s steps(1,end) infinite;animation-delay:-' + ((k % 5) * 0.4).toFixed(2) + 's'; };
+    var jump = function (k) { return 'animation:jump 0.6s steps(1,end) infinite;animation-delay:-' + ((k % 4) * 0.15).toFixed(2) + 's'; };
+    var bg = [], lines = [], nums = [], under = [], sp = [], over = [];
+    bg.push(this.box(0, 0, 360, F, '#2c6e33'));
+    bg.push(this.box(0, F + 120, 360, 40, '#2c6e33'));
+    for (var i = 0; i < 12; i++) {
+      var col = i === 0 ? '#22408f' : (i === 11 ? '#8e2330' : (i % 2 ? '#3f9a45' : '#378a3d'));
+      bg.push(this.box(30 * i, F, 30, 120, col));
+    }
+    bg.push(this.box(0, F - 2, 360, 2, '#f4f4ee'));
+    bg.push(this.box(0, F + 120, 360, 2, '#f4f4ee'));
+    for (var a = 0; a <= 10; a++) lines.push(this.box(X(10 * a) - 1, F, 2, 120, '#f4f4ee'));
+    for (var b = 0; b < 10; b++) lines.push(this.box(X(10 * b + 5), F, 1, 120, 'rgba(244,244,238,0.45)'));
+    for (var h = 1; h < 100; h++) {
+      if (h % 5) {
+        lines.push(this.box(X(h), F + 44, 1, 4, 'rgba(244,244,238,0.6)'));
+        lines.push(this.box(X(h), F + 72, 1, 4, 'rgba(244,244,238,0.6)'));
+      }
+    }
+    [10, 20, 30, 40, 50, 60, 70, 80, 90].forEach(function (yd) {
+      nums.push({ label: String(yd <= 50 ? yd : 100 - yd), style: 'position:absolute;left:' + (X(yd) - 10) + 'px;top:' + (F + 104) + 'px;width:20px;text-align:center;font-family:\'Silkscreen\',monospace;font-size:8px;color:rgba(244,244,238,0.85)' });
+    });
+    var L = X(o.los), B0 = F + 122;
+    var top = [];
+    for (var k = 0; k < 24; k++) top.push({ x: 86 + k * 9 + ((k * 37) % 7) - 3, y: 3 + ((k * 53) % 14), t: 'p', k: k });
+    top.push({ x: 40, y: 10, t: 'p', k: 3 }, { x: 322, y: 7, t: 'p', k: 1 });
+    top.push({ x: 166, y: 20, t: 'c', k: 0 }, { x: 196, y: 19, t: 'c', k: 2 });
+    top.sort(function (m, n) { return m.y - n.y; });
+    top.forEach(function (m) { sp.push(m.t === 'c' ? self.px(COACH, cp(m.k, '#1d3b8f'), m.x, m.y, 2, still(m.k)) : self.px(SLUMP, HOME, m.x, m.y, 2, still(m.k))); });
+    var bot = [];
+    for (var j = 0; j < 22; j++) bot.push({ x: 78 + j * 9 + ((j * 29) % 7) - 3, y: B0 + 3 + ((j * 41) % 15), t: 'p', k: j });
+    bot.push({ x: 300, y: B0 + 6, t: 'p', k: 2 }, { x: 150, y: B0 + 20, t: 'c', k: 1 }, { x: 178, y: B0 + 20, t: 'c', k: 3 });
+    bot.sort(function (m, n) { return m.y - n.y; });
+    bot.forEach(function (m) { sp.push(m.t === 'c' ? self.px(COACH, cp(m.k, '#7a1b17'), m.x, m.y, 2, jump(m.k)) : self.px(CHEER, AWAY, m.x - 1, m.y, 2, jump(m.k))); });
+    under.push(this.box(L - 1, F, 2, 120, '#4aa3ff'));
+    var onField = [];
+    // offense: eleven players left standing around the ball
+    [[-14, 30], [-12, 42], [-14, 54], [-12, 66], [-14, 78], [-30, 50], [-34, 70], [-24, 14], [-20, 96], [-44, 36], [-46, 84]].forEach(function (q, n) {
+      onField.push({ m: SLUMP, p: HOME, x: L + q[0], y: F + q[1], a: still(n) });
+    });
+    // defense: eleven players celebrating the stop
+    [[4, 26], [6, 40], [4, 56], [6, 72], [22, 18], [24, 48], [22, 82], [40, 30], [44, 66], [62, 42], [64, 92]].forEach(function (q, n) {
+      onField.push({ m: CHEER, p: AWAY, x: L + q[0], y: F + q[1], a: jump(n) });
+    });
+    onField.push({ m: REF, p: { W: '#f4f4ee', K: '#141414', S: skins[1] }, x: L + 84, y: F + 100, a: '' });
+    onField.sort(function (m, n) { return m.y - n.y; });
+    onField.forEach(function (q) { sp.push(self.px(q.m, q.p, q.x, q.y, 2, q.a)); });
+    over.push(this.px(BALL, { B: '#8a4f22', W: '#f4f4ee' }, L - 6, F + 59, 2));
+    return { bg: bg, lines: lines, nums: nums, under: under, sprites: sp, over: over };
+  }
+  renderVals() {
+    var T = this.tiers();
+    var drive = ['starter', 'gem', 'backup', 'miss', 'gem', 'sleeper', 'starter'];
+    var rows = drive.map(function (k, i) {
+      var t = T[k];
+      return {
+        n: String(i + 1),
+        play: t.long,
+        tier: t.name,
+        yd: '+' + t.yd,
+        tag: 'font-family:\'Courier Prime\',monospace;font-weight:700;font-size:11px;letter-spacing:0.5px;color:' + t.ink + ';background:' + t.c + ';padding:3px 4px;text-align:center;white-space:nowrap;border:2px solid #1d1a14'
+      };
+    });
+    var squares = drive.map(function (k) {
+      return { style: 'width:18px;height:18px;background:' + T[k].led };
+    });
+    return { decor: this.stadium(), f: this.field({ los: 76 }), rows: rows, squares: squares };
+  }
+}
+</script>
+</body>
+</html>

@@ -82,7 +82,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *1990–1999 seasons · Must have been on an active regular-season roster*
 6. **Name a DB with a 5+ interception season**
    *Single season, 1999–2026 regular season*
-7. **Name an AP Comeback Player of the Year**
+7. **Name an AP Rookie of the Year (offense or defense)**
    *1998–2025 seasons*
 
 ## Day 6
@@ -162,7 +162,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
    *1990–1999 seasons · QBs must have started a regular-season game*
 6. **Name a TE with a 7+ receiving TD season**
    *Single season, 1999–2026 regular season*
-7. **Name an AP Comeback Player of the Year**
+7. **Name an AP MVP or Offensive Player of the Year**
    *1998–2025 seasons*
 
 ## Day 11
@@ -233,6 +233,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
 
 ## Revisions after the first probe (approved)
 - Launch-night replacements (Sleeper rule: ≥ 3 Sleeper Picks besides the YKB Kid): stat prompts on D3, D6–D13 replaced (D13 QB rushing stepped 300 → 200); two-team D7, D9, D11, D14 switched to any position; award slot is a 5-award cycle (MVP, DPOY, OROY, DROY, Comeback), OPOY dropped.
+- 2026-11-08: AP Comeback retired (27-winner pool can't meet the Sleeper rule under award F = s_pv). D5.7 → AP Rookie of the Year (offense or defense), D10.7 → AP MVP or Offensive Player of the Year (`award_any`, union of winners).
 - Second launch-night round (after the team/opponent data fix): D3.6 → kicker 30+ field goals; D9.6 → TE 65+ receptions; D5.4 Steelers+Browns and D8.4 Colts+Titans → any position; D11.4 → Giants+Eagles; D14.4 → Packers+Lions. All pass with no steps or fallbacks.
 - Two-team prompts: same-position (RB or WR) versions all came in under 25. Changed to "skill player" (RB, WR or TE) where that reaches 25; the other 14 pairs are any position.
 - TE receiving yards 1,000 → 800 (18 → 50 answers). QB rushing yards 500 → 400 (22 → 38 answers).
@@ -241,7 +242,7 @@ Daily slot order: 1–2 Easy · 3–4 Two-team · 5 Era · 6 Stat · 7 Award
 ## Notes for probing
 - **Franchise history** includes relocations and renames (Raiders, Rams, Cardinals, Colts, Chargers, Titans/Oilers, Washington).
 - **Ravens and Browns:** the modern Browns (1999–) and the Ravens (1996–) are separate franchises. Confirm how the franchise map handles the 1946–95 Browns.
-- **Award seasons** end at 2025 because 2026 awards aren't given until early 2027. Confirm the Comeback Player of the Year start year.
+- **Award seasons** end at 2025 because 2026 awards aren't given until early 2027.
 - **Day averages:** if a day's average comes in over 300, narrow one of its 🔥 prompts first (e.g. back to 2000–2026).
 - **If a prompt comes in under 25:** stat prompts → lower the threshold one step. Two-team prompts that come in short → widen to "skill player (RB/WR/TE)".
 - **Two-team prompts are skill-player or any-position** (see Revisions). QB two-team prompts were dropped because too few QBs have started for both teams in a pair.

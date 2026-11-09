@@ -13,6 +13,10 @@ POS_WORD = {"QB": "QB", "RB": "RB", "WR": "WR", "TE": "TE", "LB": "LB", "DB": "D
 STAT_WORD = {"receiving_yards": "receiving yard", "rushing_yards": "rushing yard", "passing_yards": "passing yard",
              "sacks": "sack", "interceptions": "interception", "receptions": "reception", "rushing_tds": "rushing TD",
              "receiving_tds": "receiving TD", "passing_tds": "passing TD", "field_goals": "field goal"}
+# award_any texts may share words ("Rookie of the Year (offense or defense)")
+AWARD_ANY_WORD = {"mvp": r"\bMVP\b", "opoy": r"Offensive Player of the Year", "dpoy": r"Defensive Player of the Year",
+                  "oroy": r"Rookie of the Year.*offense|Offensive Rookie of the Year",
+                  "droy": r"Rookie of the Year.*defense|Defensive Rookie of the Year"}
 AWARD_WORD = {"mvp": "MVP", "dpoy": "Defensive Player of the Year", "opoy": "Offensive Player of the Year",
               "oroy": "Offensive Rookie of the Year", "droy": "Defensive Rookie of the Year", "comeback": "Comeback Player"}
 
@@ -68,6 +72,14 @@ def problems(p: dict) -> list[str]:
     for a in (f["award"] if isinstance(f.get("award"), list) else [f["award"]] if "award" in f else []):
         if AWARD_WORD[a] not in text:
             out.append(f"award {a} not in text")
+    if any_ := f.get("award_any"):
+        for a in any_:
+            if not re.search(AWARD_ANY_WORD[a], text):
+                out.append(f"award_any {a} not in text")
+        if " or " not in text:
+            out.append("award_any (either award) but text doesn't say 'or'")
+    if "Comeback" in text or "comeback" in str(f.get("award", "")) + str(f.get("award_any", "")):
+        out.append("AP Comeback is retired from the award rotation (§6)")
     return out
 
 

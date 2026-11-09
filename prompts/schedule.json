@@ -5,6 +5,7 @@
     "timezone": "America/New_York"
   },
   "queue": "prompts/prompts_14_days.jsonl",
+  "frozen_through": 1,
   "drives": [
     {
       "drive": 1,
