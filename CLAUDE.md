@@ -384,6 +384,12 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **Identical full names within a prompt** (e.g. two Steve Smiths on "WR 1,200+ receiving yards": Panthers 1,563 yds · 2005 and Giants 1,220 yds · 2009): asking for a first name can't separate them, so the UI lists the tied answers with their **context lines** and the player taps one.
 - Measured on the 14-day draft (one random typo per answer, 9,291 answers): 98.6% matched the right player, 0 the wrong one, 0.2% ambiguous, 1.3% rejected.
 
+**Answer submission** (playtest rules, decided 2026-11-08)
+- **Retries:** a guess that isn't a valid answer (an unknown name, or a real player who doesn't fit the prompt) does **not** end the play. The input shakes, "Not on the board" shows briefly, the box clears, and the clock keeps running. Players keep guessing until they hit a valid answer or the clock runs out. Repeating the same wrong guess just shakes again. An empty submit does nothing.
+- **Autocorrect confirmation:** when a match needed typo correction (a fuzzy match, not an exact name, first-name variant or exact unique last name), the UI asks "Did you mean <Name>?" with the context line and Yes / No while the clock keeps running. Yes locks it in; No (or Escape) clears the box to guess again.
+- **Clock hits 0:00:** whatever is typed is submitted once through the matcher. A valid match counts, including a fuzzy one (accepted without asking). An open "Did you mean" is accepted. Otherwise the play is **Incomplete** (0 yards).
+- A play is Incomplete only when time expires without a valid answer. If the clock runs out while a "Which Smith?" picker is open, or the timeout submit is ambiguous, no answer was chosen, so the play is Incomplete.
+
 **All Answers screen**
 - Unlocks after the 7th play. Tabs **P1–P7**, one per prompt.
 - Scrollable list per prompt, sortable by **tier** or **A–Z**, with **search** (same matcher as answer entry: names, first-name variants, last names, typos).

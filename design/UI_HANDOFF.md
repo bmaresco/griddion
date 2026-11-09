@@ -56,8 +56,7 @@ Stack: keep it small. Vite + TypeScript, no heavy framework (vanilla or Preact).
 ### Answer submission
 - Match with the ported matcher: exact name (incl. first-name variants), unique last name, typo tolerance; real-but-invalid player → Incomplete.
 - **Ambiguous** (two valid players share the input): keep the timer running and ask "Which Smith?" with the candidates as buttons.
-- Empty submit or timer expiry → Incomplete.
-- One answer per prompt; no retries after a valid/invalid verdict.
+- **Superseded by the playtest rules in CLAUDE.md §9 *Answer submission* (2026-11-08):** wrong guesses retry until the clock runs out, typo matches ask "Did you mean…?", and the clock submits whatever is typed at 0:00. Incomplete only if time expires without a valid answer.
 
 ---
 
