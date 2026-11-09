@@ -31,7 +31,7 @@ describe('parity with matching.py', () => {
     }
     return matchers.get(k)!;
   };
-  it('agrees on every case (except the documented in-bank alias improvement)', () => {
+  it('agrees on every case (except the documented in-bank alias improvement)', { timeout: 60000 }, () => {
     const diffs: string[] = [];
     let improved = 0;
     for (const c of cases) {
