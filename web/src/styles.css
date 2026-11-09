@@ -221,3 +221,44 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------------- desktop: two columns (design/DesktopPlay, DesktopRecap) */
+.desk { display: none; }
+@media (min-width: 1100px) {
+  body { background: var(--night2); }
+  .desk { display: inline; }
+  .app {
+    max-width: 1200px; padding: 24px 20px; gap: 22px 40px;
+    display: grid; grid-template-columns: 760px 400px; grid-template-rows: auto 1fr; justify-content: center; align-content: start;
+    background: transparent;
+  }
+  .app > .top { grid-column: 1; grid-row: 1; padding: 0; background: transparent; overflow: visible; min-height: 0; }
+  .app > .top .stadium, .app > .top .post { display: none; }
+  .app > .top .jumbo { width: 760px; }
+  .hdr { height: 28px; padding: 0 10px; }
+  .app > .top .screen { min-height: 156px; padding: 14px 18px 12px; }
+  .app > .top .screen h1.s32 { font-size: 48px; }
+  .segs { height: 10px; gap: 3px; } .segs i { height: 10px; }
+  .field { grid-column: 1; grid-row: 2; width: 726px; height: 406px; transform: none; margin: 0; align-self: start; justify-self: center; }
+  .field-inner { transform: scale(2); transform-origin: 0 0; image-rendering: pixelated; }
+  .app > .wb { grid-column: 2; grid-row: 1 / span 2; margin: 0; height: calc(100vh - 48px); min-height: 640px; display: flex; padding: 8px; }
+  .app > .wb { min-width: 0; }
+  .app > .wb > .wb-dash { flex: 1 1 auto; min-width: 0; display: flex; padding: 8px; }
+  .app > .wb .paper { flex: 1 1 auto; min-width: 0; padding: 18px 20px; gap: 16px; overflow-y: auto; }
+  .callit input { width: 0; }
+  .mini { display: none !important; }
+  /* the night stadium fills the window behind both columns */
+  .app::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 120%, #2a2160 0, transparent 60%), var(--night2);
+  }
+
+  /* All Answers: left = jumbotron, tabs, search; right = full-height list */
+  .app.ans { height: 100vh; grid-template-rows: auto auto auto 1fr; padding: 24px 20px; }
+  .ans > .jumbo { grid-column: 1; grid-row: 1; }
+  .ans > .tabs { grid-column: 1; grid-row: 2; }
+  .ans > .findrow { grid-column: 1; grid-row: 3; }
+  .ans > #back { grid-column: 1; grid-row: 4; align-self: start; }
+  .ans > .list-wrap { grid-column: 2; grid-row: 1 / span 4; min-height: 0; }
+  .tab:hover, .sortbtn:hover, .arow:hover, .pick:hover { filter: brightness(1.03); }
+}

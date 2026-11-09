@@ -191,7 +191,7 @@ function playScreen() {
     </form>
     ${legend()}`;
   mount(`<div class="mini dot" id="mini" aria-hidden="true"><span class="upper" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div>` +
-    top(screen, `<span>BALL · ${ballSpot(st.yardline)}</span><span>PTS · ${pad3(st.points)}</span>`) +
+    top(screen, `<span>BALL · ${ballSpot(st.yardline)}</span><span class="desk">4TH QTR · ${clockText(st.clock)}</span><span>PTS · ${pad3(st.points)}</span>`) +
     fieldBox(mode, label) + wristband('QB WRISTBAND', `DRIVE #${driveNo}`, body));
 
   const input = document.getElementById('answer') as HTMLInputElement;
@@ -393,7 +393,7 @@ function resultScreen() {
     ? (after.tdPlay !== null ? { kind: 'formation', los: after.yardline, afterTD: true } : { kind: 'formation', los: after.yardline })
     : { kind: 'play', los: before.yardline, gain, tier: t, afterTD: before.tdPlay !== null };
   const label = valid ? `Pixel football field. ${t.play}: the offense gains ${gain} yards.` : 'Pixel football field. The pass falls incomplete. No gain.';
-  mount(top(screen, `<span>BALL · ${ballSpot(after.yardline)}</span><span>PTS · ${pad3(after.points)}</span>`) + fieldBox(mode, label) +
+  mount(top(screen, `<span>BALL · ${ballSpot(after.yardline)}</span><span class="desk">4TH QTR · ${clockText(after.clock)}</span><span>PTS · ${pad3(after.points)}</span>`) + fieldBox(mode, label) +
     wristband('QB WRISTBAND', `DRIVE #${driveNo}`, body));
   const next = document.getElementById('next')!;
   next.addEventListener('click', advance);
@@ -434,7 +434,7 @@ function recapScreen() {
   const meta = td ? `RECORD ${stats.wins}–${stats.losses}` : `${RULES.touchdownYards - st.yards} YDS SHORT · RECORD ${stats.wins}–${stats.losses}`;
   const body = `<div class="chart" aria-label="Drive chart">${rows}</div>
     <div class="btns"><button type="button" class="btn" id="share">SHARE</button><a class="btn2" href="#answers" id="all">ALL ANSWERS</a></div>`;
-  mount(top(screen, `<span>DRIVE #${driveNo} COMPLETE</span><span>PTS ${st.points}</span>`) +
+  mount(top(screen, `<span>DRIVE #${driveNo} COMPLETE</span><span class="desk">FINAL · 0:00</span><span>PTS ${st.points}</span>`) +
     fieldBox(td ? { kind: 'td' } : { kind: 'stalled', los: st.yardline },
       td ? 'Pixel football field. Touchdown! Your players jump in the end zone, the ref signals the score, and confetti falls.'
         : 'Pixel football field. The drive stalled. The defense and the visiting sideline celebrate while your offense slumps.') +
@@ -585,6 +585,10 @@ function fitWidth() {
   document.documentElement.style.setProperty('--fs', w < 378 ? String((w - 12) / 366) : '1');
 }
 window.addEventListener('resize', fitWidth);
+window.matchMedia('(min-width: 1100px)').addEventListener('change', () => {
+  if (!day || game().phase === 'play') return; // play screen is layout-only CSS; don't reset the input
+  render();
+});
 
 async function boot() {
   stopTimer();
