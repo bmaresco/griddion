@@ -181,7 +181,7 @@ function playScreen() {
   const secs = secondsLeft();
   const screen = `<div class="screen dot">
       <span class="s16 dim">PLAY ${i + 1} OF ${RULES.plays}</span>
-      <h1 class="s32 upper" id="prompt">${esc(p.text)}</h1>
+      <h1 class="s32 upper${p.text.length > 40 ? ' long' : ''}" id="prompt">${esc(p.text)}</h1>
       <p class="s16 dim upper" style="font-size:16px">${esc(p.subtitle)}</p>
       <div class="grow"></div>
       <div class="timer" id="timer" role="timer" aria-label="Time left"><div class="segs">${'<i></i>'.repeat(25)}</div><span class="s16" id="secs">${clockText(secs)}</span></div>
@@ -190,20 +190,26 @@ function playScreen() {
   const label = st.tdPlay !== null
     ? 'Pixel football field. You already scored; the offense lines up again near the goal line.'
     : `Pixel football field. Both teams, eleven a side, are lined up at ${ballSpot(st.yardline).toLowerCase().replace('own', 'your own').replace('opp', "the opponent's")}${st.yardline !== 50 ? '-yard line' : ''}.`;
-  const body = `${driveLog(g.plays, i)}
-    <form class="callit" id="callit" autocomplete="off">
-      <label for="answer">CALL IT</label>
+  const desk = isDesktop();
+  const form = `<form class="callit" id="callit" autocomplete="off">
+      <label for="answer"${desk ? '' : ' class="sr-only"'}>CALL IT</label>
       <div class="row"><input id="answer" type="text" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type a player…" maxlength="60"><button type="submit" class="btn">SNAP</button></div>
       <p class="flash" id="flash" role="status" aria-live="assertive"></p>
-    </form>
-    ${legend()}`;
-  mount(`<div class="mini dot" id="mini" aria-hidden="true"><span class="upper" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div>` +
-    top(screen, `<span>BALL · ${ballSpot(st.yardline)}</span><span class="desk">4TH QTR · ${clockText(st.clock)}</span><span>PTS · ${pad3(st.points)}</span>`) +
-    fieldBox(mode, label) + wristband('QB WRISTBAND', `DRIVE #${driveNo}`, body));
+    </form>`;
+  const jumboHtml = top(screen, `<span>BALL · ${ballSpot(st.yardline)}</span><span class="desk">4TH QTR · ${clockText(st.clock)}</span><span>PTS · ${pad3(st.points)}</span>`);
+  // Desktop: wristband holds log + input + key. Phone: input sits right under the jumbotron so the
+  // prompt, subtitle, clock and input all fit above the on-screen keyboard; then field, then log + key.
+  const layout = desk
+    ? jumboHtml + fieldBox(mode, label) + wristband('QB WRISTBAND', `DRIVE #${driveNo}`, `${driveLog(g.plays, i)}${form}${legend()}`)
+    : jumboHtml + `<div class="callcard"><div class="paper">${form}</div></div>` + fieldBox(mode, label) + wristband('QB WRISTBAND', `DRIVE #${driveNo}`, `${driveLog(g.plays, i)}${legend()}`);
+  mount(`<div class="mini dot" id="mini" aria-hidden="true"><span class="upper" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div>` + layout, desk ? '' : 'playm');
 
   const input = document.getElementById('answer') as HTMLInputElement;
   document.getElementById('callit')!.addEventListener('submit', (e) => { e.preventDefault(); submit(input.value); });
   input.focus({ preventScroll: true });
+  // Phone: when the keyboard opens the browser scrolls to the input; put the page back at the top so
+  // the jumbotron and input sit together above the keyboard.
+  if (!desk) input.addEventListener('focus', () => setTimeout(() => { if (!isDesktop()) window.scrollTo(0, 0); }, 300));
 
   // When the phone keyboard pushes the jumbotron off screen, pin a mini prompt bar.
   const mini = document.getElementById('mini')!;
@@ -297,7 +303,7 @@ function wrongGuess() {
 }
 
 function openOverlay(label: string, html: string): HTMLElement {
-  const paper = document.querySelector('.wb .paper')!;
+  const paper = document.querySelector('.callcard .paper') ?? document.querySelector('.wb .paper')!;
   const el = document.createElement('div');
   el.className = 'picker';
   el.setAttribute('role', 'dialog');
@@ -317,7 +323,7 @@ function showPicker(typed: string, cands: Answer[], label: string) {
     record(validRec(typed, cands[Number(b.dataset.k)]));
   }));
   el.querySelector('.back')!.addEventListener('click', () => closeOverlay(false));
-  (el.querySelector('.pick') as HTMLButtonElement | null)?.focus();
+  (el.querySelector('.pick') as HTMLButtonElement | null)?.focus({ preventScroll: true });
 }
 
 function showConfirm(typed: string, a: Answer) {
@@ -327,7 +333,7 @@ function showConfirm(typed: string, a: Answer) {
     <div class="btns"><button type="button" class="btn" id="yes">YES</button><button type="button" class="btn2" id="no">NO</button></div>`);
   el.querySelector('#yes')!.addEventListener('click', () => { if (overlay?.kind === 'confirm') record(validRec(typed, a)); });
   el.querySelector('#no')!.addEventListener('click', () => closeOverlay(true));
-  (el.querySelector('#yes') as HTMLButtonElement).focus();
+  (el.querySelector('#yes') as HTMLButtonElement).focus({ preventScroll: true });
 }
 
 /** Close a picker/confirmation and go back to guessing (the clock never stopped). */
@@ -600,7 +606,15 @@ function fitWidth() {
 }
 window.addEventListener('resize', fitWidth);
 window.matchMedia('(min-width: 1100px)').addEventListener('change', () => {
-  if (!day || game().phase === 'play') return; // play screen is layout-only CSS; don't reset the input
+  if (!day) return;
+  if (game().phase === 'play') {
+    // The play screen's DOM order differs between phone and desktop: rebuild it, keeping what's typed.
+    if (overlay || view !== 'game') return;
+    const typed = inputEl()?.value ?? '';
+    playScreen();
+    const input = inputEl(); if (input) input.value = typed;
+    return;
+  }
   render();
 });
 

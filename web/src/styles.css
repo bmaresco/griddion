@@ -223,6 +223,21 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
   80% { transform: translate(var(--dx), var(--dy)); opacity: 1 } 100% { transform: translate(var(--dx), calc(var(--dy) + 6px)); opacity: 0 }
 }
 
+/* ---------------- phone play screen: jumbotron, input, field, wristband (compact so it all clears the keyboard) */
+.playm > .top { min-height: 0; padding: 6px 0 8px; }
+.playm > .top .post { display: none; }
+.playm .jumbo { width: calc(100% - 16px); padding: 4px; gap: 4px; }
+.playm .screen { min-height: 0; padding: 8px 10px; gap: 4px; }
+.playm .screen h1.s32 { font-size: 28px; line-height: 1.02; }
+.playm .screen h1.s32.long { font-size: 24px; }
+.playm .screen p.s16 { line-height: 1.12; }
+.callcard { margin: 0 8px; border: 3px solid #0a0a10; flex: none; }
+.callcard .paper { padding: 8px 10px 4px; gap: 4px; }
+.callcard .callit { gap: 4px; }
+.callcard .flash { min-height: 20px; }
+.callcard .picker { position: static; inset: auto; padding: 2px 0 8px; overflow: visible; z-index: auto; }
+.playm { gap: 10px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
