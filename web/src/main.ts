@@ -99,7 +99,6 @@ function legend(): string {
 }
 
 function mount(html: string, cls = '') {
-  setTyping(false);
   $app.className = 'app ' + cls;
   $app.innerHTML = html;
   window.scrollTo(0, 0);
@@ -198,22 +197,13 @@ function playScreen() {
       <p class="flash" id="flash" role="status" aria-live="assertive"></p>
     </form>
     ${legend()}`;
-  const long = p.text.length > 34 ? ' long' : '';
-  mount(`<div class="mini dot" id="mini" aria-hidden="true"><div class="mini-row"><span class="mini-q upper${long}">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div><div class="segs">${'<i></i>'.repeat(25)}</div></div>` +
+  mount(`<div class="mini dot" id="mini" aria-hidden="true"><span class="upper" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(p.text)}</span><span id="minisecs">${clockText(secs)}</span></div>` +
     top(screen, `<span>BALL · ${ballSpot(st.yardline)}</span><span class="desk">4TH QTR · ${clockText(st.clock)}</span><span>PTS · ${pad3(st.points)}</span>`) +
     fieldBox(mode, label) + wristband('QB WRISTBAND', `DRIVE #${driveNo}`, body));
 
   const input = document.getElementById('answer') as HTMLInputElement;
   document.getElementById('callit')!.addEventListener('submit', (e) => { e.preventDefault(); submit(input.value); });
-  // Taps on SNAP / picker buttons must not blur the input: that would close the phone keyboard
-  // and collapse the typing layout under the finger before the click lands.
-  document.querySelector('.wb .paper')!.addEventListener('mousedown', (e) => {
-    if (typing && (e.target as Element).closest('button')) e.preventDefault();
-  });
-  input.addEventListener('focus', syncTyping);
-  input.addEventListener('blur', () => setTimeout(syncTyping, 120));
   input.focus({ preventScroll: true });
-  syncTyping();
 
   // When the phone keyboard pushes the jumbotron off screen, pin a mini prompt bar.
   const mini = document.getElementById('mini')!;
@@ -231,9 +221,9 @@ function updateTimer() {
   if (g.phase !== 'play' || g.deadline === null) return;
   const msLeft = g.deadline - now();
   const secs = Math.max(0, Math.ceil(msLeft / 1000));
-  document.querySelectorAll('#timer .segs i, #mini .segs i').forEach((el, k) => el.classList.toggle('on', k % 25 < secs));
+  const segs = document.querySelectorAll('#timer .segs i');
+  segs.forEach((el, k) => el.classList.toggle('on', k < secs));
   document.getElementById('timer')?.classList.toggle('low', secs <= 5);
-  document.getElementById('mini')?.classList.toggle('low', secs <= 5);
   const txt = clockText(secs);
   for (const id of ['secs', 'minisecs']) { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; }
   if (msLeft <= 0) expire();
@@ -327,7 +317,7 @@ function showPicker(typed: string, cands: Answer[], label: string) {
     record(validRec(typed, cands[Number(b.dataset.k)]));
   }));
   el.querySelector('.back')!.addEventListener('click', () => closeOverlay(false));
-  if (!typing) (el.querySelector('.pick') as HTMLButtonElement | null)?.focus();
+  (el.querySelector('.pick') as HTMLButtonElement | null)?.focus();
 }
 
 function showConfirm(typed: string, a: Answer) {
@@ -337,7 +327,7 @@ function showConfirm(typed: string, a: Answer) {
     <div class="btns"><button type="button" class="btn" id="yes">YES</button><button type="button" class="btn2" id="no">NO</button></div>`);
   el.querySelector('#yes')!.addEventListener('click', () => { if (overlay?.kind === 'confirm') record(validRec(typed, a)); });
   el.querySelector('#no')!.addEventListener('click', () => closeOverlay(true));
-  if (!typing) (el.querySelector('#yes') as HTMLButtonElement).focus();
+  (el.querySelector('#yes') as HTMLButtonElement).focus();
 }
 
 /** Close a picker/confirmation and go back to guessing (the clock never stopped). */
@@ -603,44 +593,6 @@ document.addEventListener('visibilitychange', () => {
   if ((entry?.drive ?? 0) !== driveNo && !(g && (g.phase === 'play' || g.phase === 'result'))) boot();
   else if (g?.phase === 'play') updateTimer();
 });
-
-// ---------------------------------------------------------------- phone typing layout
-// While the answer box is focused and the on-screen keyboard is up (< 1100px), the game is pinned to
-// window.visualViewport (the area above the keyboard): prompt + clock bar, input, feedback. Nothing else.
-let typing = false;
-let vvBase = 0, vvBaseW = 0; // tallest visual viewport seen at this width = keyboard closed
-function keyboardOpen(): boolean {
-  const vv = window.visualViewport;
-  if (!vv) return false;
-  if (vv.width !== vvBaseW) { vvBaseW = vv.width; vvBase = 0; }
-  vvBase = Math.max(vvBase, vv.height);
-  return vv.height < vvBase - 120;
-}
-function syncTyping() {
-  const input = inputEl();
-  const on = !!input && !!day && view === 'game' && game().phase === 'play' && !isDesktop()
-    && document.activeElement === input && keyboardOpen();
-  setTyping(on);
-}
-function setTyping(on: boolean) {
-  const root = document.documentElement;
-  if (on) {
-    const vv = window.visualViewport!;
-    root.style.setProperty('--vvh', vv.height + 'px');
-    root.style.setProperty('--vvt', vv.offsetTop + 'px');
-  }
-  if (on === typing) return;
-  typing = on;
-  root.classList.toggle('typing', on);
-  $app.classList.toggle('typing', on);
-  if (on) document.getElementById('mini')?.classList.add('show');
-}
-window.visualViewport?.addEventListener('resize', syncTyping);
-window.visualViewport?.addEventListener('scroll', syncTyping);
-// Belt and braces: iOS can still try to scroll the page behind the fixed layout.
-document.addEventListener('touchmove', (e) => {
-  if (typing && !(e.target as Element).closest('.wb .paper')) e.preventDefault();
-}, { passive: false });
 
 function fitWidth() {
   const w = document.documentElement.clientWidth;
