@@ -598,6 +598,11 @@ async function boot() {
     const t = params.get('today'), n = params.get('now');
     if (n) setMockNow(new Date(n));
     else if (t) setMockNow(new Date(`${t}T12:00:00-05:00`));
+    if (params.has('reset')) {
+      try { localStorage.removeItem('griddion:v1'); } catch {}
+      params.delete('reset');
+      history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
+    }
   }
   load();
   try {
