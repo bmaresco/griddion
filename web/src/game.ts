@@ -72,6 +72,17 @@ export function yardsOnPlay(plays: PlayRecord[], i: number): number {
   return driveState(plays.slice(0, i + 1)).yards - driveState(plays.slice(0, i)).yards;
 }
 
+export const MAX_POINTS = RULES.plays * 100;
+
+/** What the wristband / drive chart shows for play i: yards before the TD, "TD" on the scoring play, points after it. */
+export type PlayCell = { kind: 'yds'; value: number } | { kind: 'td' } | { kind: 'pts'; value: number };
+export function playCell(plays: PlayRecord[], i: number): PlayCell {
+  const td = driveState(plays.slice(0, i + 1)).tdPlay;
+  if (td === null) return { kind: 'yds', value: yardsOnPlay(plays, i) };
+  if (td === i + 1) return { kind: 'td' };
+  return { kind: 'pts', value: TIERS[plays[i].tier].points };
+}
+
 export function ballSpot(yardline: number): string {
   if (yardline >= 100) return 'END ZONE';
   if (yardline < 50) return 'OWN ' + yardline;
@@ -88,9 +99,9 @@ export function resultLine(plays: PlayRecord[]): string {
   const d = driveState(plays);
   if (d.tdPlay !== null) {
     const head = d.tdPlay === RULES.plays ? 'TOUCHDOWN' : 'TOUCHDOWN on P' + d.tdPlay;
-    return `${head} · W ${RULES.win[0]}–${RULES.win[1]} · ${d.points} pts`;
+    return `${head} · W ${RULES.win[0]}–${RULES.win[1]} · ${d.points}/${MAX_POINTS} pts`;
   }
-  return `STALLED at ${ballSpot(d.yardline)} · L ${RULES.trail[0]}–${RULES.trail[1]} · ${d.points} pts`;
+  return `STALLED at ${ballSpot(d.yardline)} · L ${RULES.trail[0]}–${RULES.trail[1]} · ${d.points}/${MAX_POINTS} pts`;
 }
 
 export function shareText(drive: number, plays: PlayRecord[]): string {

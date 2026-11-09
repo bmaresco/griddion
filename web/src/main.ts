@@ -1,6 +1,6 @@
 // Griddion app: screens, game flow, timer, resume, share. Mobile-first 390px column.
 import './styles.css';
-import { TIERS, LEGEND_ORDER, RULES, driveState, yardsOnPlay, ballSpot, clockText, shareText, type PlayRecord, type Tier } from './game';
+import { TIERS, LEGEND_ORDER, RULES, driveState, yardsOnPlay, ballSpot, clockText, shareText, playCell, MAX_POINTS, type PlayRecord, type Tier } from './game';
 import { now, setMockNow, todayET, msUntilMidnightET, daysBetween } from './clock';
 import { load, save, store, displayStreak, recordFinish } from './storage';
 import { loadSchedule, loadDay, loadMatchData, matcherFor, type Day, type Prompt, type Answer, type Schedule } from './data';
@@ -68,13 +68,20 @@ function wristband(title: string, meta: string, body: string, metaStyle = ''): s
     ${body}</div></div></div>`;
 }
 
+function cellHtml(plays: PlayRecord[], i: number): string {
+  const c = playCell(plays, i);
+  if (c.kind === 'td') return '<span class="v td">TD</span>';
+  if (c.kind === 'pts') return `<span class="v pts">+${c.value}<small>PTS</small></span>`;
+  return `<span class="v">+${c.value}</span>`;
+}
+
 function driveLog(plays: PlayRecord[], current: number): string {
   let s = '<div class="log" aria-label="Drive log">';
   for (let i = 0; i < RULES.plays; i++) {
     const p = plays[i];
     if (p) {
       const t = TIERS[p.tier];
-      s += `<div><span class="n">P${i + 1}</span><span class="v">+${yardsOnPlay(plays, i)}</span><span class="bar" style="background:${t.color}"></span></div>`;
+      s += `<div><span class="n">P${i + 1}</span>${cellHtml(plays, i)}<span class="bar" style="background:${t.color}"></span></div>`;
     } else if (i === current) {
       s += `<div class="cur"><span class="n">P${i + 1}</span><span class="v">?</span><span class="bar"></span></div>`;
     } else {
@@ -413,6 +420,13 @@ function advance() {
 
 // ---------------------------------------------------------------- recap
 
+function chartCell(plays: PlayRecord[], i: number): string {
+  const c = playCell(plays, i);
+  if (c.kind === 'td') return '<span class="yd td">TD</span>';
+  if (c.kind === 'pts') return `<span class="yd pts">+${c.value}<small>PTS</small></span>`;
+  return `<span class="yd">+${c.value}</span>`;
+}
+
 function recapScreen() {
   const g = game();
   const st = driveState(g.plays);
@@ -423,18 +437,18 @@ function recapScreen() {
   const screen = `<div class="screen center dot">
       <h1 class="s32 ${td ? 'blink-fast' : 'blink'}" style="color:${td ? '#ffd23f' : '#ff8a80'}">${td ? 'TOUCHDOWN!' : 'DRIVE STALLED'}</h1>
       <div class="score"><span class="s16" style="color:var(--home-led)">YOU</span><span class="s32">${score[0]}</span><span class="s16 dim">–</span><span class="s32">${score[1]}</span><span class="s16" style="color:var(--away-led)">AWAY</span></div>
-      <p class="s16 dim">${st.points} PTS · ${st.yards} YDS · ${td && st.tdPlay! < RULES.plays ? 'TD ON P' + st.tdPlay : '7 PLAYS'}</p>
+      <p class="s16 dim">${st.points} / ${MAX_POINTS} PTS · ${st.yards} YDS · ${td && st.tdPlay! < RULES.plays ? 'TD ON P' + st.tdPlay : '7 PLAYS'}</p>
       <div class="grow"></div>
       <div class="leds" aria-label="Play results">${squares}</div>
     </div>`;
   const rows = g.plays.map((p, i) => {
     const t = TIERS[p.tier];
-    return `<div><span class="n">${i + 1}</span><span class="play">${esc(t.play)}</span><span class="chip" style="background:${t.color};color:${t.ink}">${t.short}</span><span class="yd">+${yardsOnPlay(g.plays, i)}</span></div>`;
+    return `<div><span class="n">${i + 1}</span><span class="play">${esc(t.play)}</span><span class="chip" style="background:${t.color};color:${t.ink}">${t.short}</span>${chartCell(g.plays, i)}</div>`;
   }).join('');
   const meta = td ? `RECORD ${stats.wins}–${stats.losses}` : `${RULES.touchdownYards - st.yards} YDS SHORT · RECORD ${stats.wins}–${stats.losses}`;
   const body = `<div class="chart" aria-label="Drive chart">${rows}</div>
     <div class="btns"><button type="button" class="btn" id="share">SHARE</button><a class="btn2" href="#answers" id="all">ALL ANSWERS</a></div>`;
-  mount(top(screen, `<span>DRIVE #${driveNo} COMPLETE</span><span class="desk">FINAL · 0:00</span><span>PTS ${st.points}</span>`) +
+  mount(top(screen, `<span>DRIVE #${driveNo} COMPLETE</span><span class="desk">FINAL · 0:00</span><span>${st.points} / ${MAX_POINTS} PTS</span>`) +
     fieldBox(td ? { kind: 'td' } : { kind: 'stalled', los: st.yardline },
       td ? 'Pixel football field. Touchdown! Your players jump in the end zone, the ref signals the score, and confetti falls.'
         : 'Pixel football field. The drive stalled. The defense and the visiting sideline celebrate while your offense slumps.') +
