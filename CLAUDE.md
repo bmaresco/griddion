@@ -39,6 +39,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 - **QBs** (team, era, or conference prompts): must have **started at least one regular-season game** in the qualifying context, for all eras. The prompt subtitle shows: *"QBs must have started a regular-season game."*
 - **All other positions**: must have **played in at least one regular-season game** in the context. Preseason and playoff-only appearances don't count.
 - **Trait prompts** (awards, stat thresholds, e.g. "won OROY and MVP," "1,500+ receiving yard season"): the trait alone qualifies the player.
+- **College prompts** (decided 2026-11-11, e.g. "Name a WR who played college football at Ohio State"): the player's **final college** must match, **and** he must meet the usual rule above: a regular-season start for QBs, a counted season (§3 roster status) for everyone else, at the listed position. **Since 1974 only:** nflverse has a college for ~99.6% of players with a 1974+ season and 0% for careers that ended earlier, so seasons before 1974 don't count, and the subtitle says so (`Since 1974 · Must have played in an NFL regular-season game`). **Final school only:** a player who transferred out (e.g. Ohio State → Kansas) counts for the school he finished at. **School + position only:** no "any player" college prompts (Miami (FL), any position: 345 answers, too bottom-heavy: 91% Hidden Gem + Sleeper on the stat thresholds).
 - **Position** is the player's listed position in the qualifying seasons (e.g. a gadget player counts as a QB only for seasons he started at QB).
 - Example: Andy Dalton (0 starts for PHI in 2026) is **not** a valid "Eagles QB" answer.
 
@@ -75,6 +76,8 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 | **Wikipedia** (CC BY-SA) | Awards (MVP, OPOY, DPOY, OROY, DROY), Pro Bowl / All-Pro, Hall of Fame |
 | **Wikipedia "List of [team] starting quarterbacks"** (CC BY-SA, all 32 franchises) | QB starts, **primary source for every season** (see §3). Cross-checked against nflverse; mismatches flagged |
 | **`data/team_alignment.csv`** (hand-maintained, reviewable) | League, conference and division per franchise-season, 1950→now, including the AFL 1960–69 |
+| **nflverse colleges** (draft picks 1980+, players table, rosters) | Final college per player (`player_college`). Priority: draft picks (college at the draft) > nflverse players `college_name` > latest roster row. Multi-school strings list the final school first; only that one is kept |
+| **`data/college_aliases.csv`** (hand-maintained, reviewable) | College name normalization after rules (`St.` → State, HTML entities, trailing "University"): LSU = Louisiana State, USC = Southern California, bare roster "Miami" = Miami (FL) (63 of 63 drafted players agree), … Draft vs roster agree for 99.8% of 4,828 players after normalization; the rest are real transfers, where draft wins |
 | **Wikimedia Pageviews API** | Player fame (pageviews, available from mid-2015 onward) |
 | **Wikidata** (CC0) | ID crosswalk only: Pro Football Reference ID → Wikipedia article |
 
@@ -118,6 +121,7 @@ Supported filter types (build as a reusable library):
 - `award` (one or more; "won X and Y")
 - `award_any` (two or more; "won X or Y": the union of winners, each award from its own AP start season). The prompt text must name every award and say "or" (`check_text.py`). Award prompts either way (§7 award group).
 - `stat_threshold` (e.g. receiving yards ≥ 1500 in a single season)
+- `college` (a school or list of schools: final college attended, §3). `build_answers` clamps `season_min` to **1974** and `/probe` warns if the text doesn't say "1974". College prompts are trait prompts (A = 1) in the **college** threshold group (§7)
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
 
@@ -324,12 +328,13 @@ Set once, objectively:
 
 4. **Freeze** the resulting R′ values and record them here.
 
-**Decision: thresholds per prompt group — award, stat, and other.** Steps 1–4 run separately for each group (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values.
+**Decision: thresholds per prompt group — award, stat, college (added 2026-11-11), and other.** Steps 1–4 run separately for each group (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values.
 
 | Group | Prompts | Calibration set |
 |---|---|---|
 | award | trait prompts with an `award` or `award_any` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
 | stat | trait prompts with a `stat_threshold` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
+| college | trait prompts with a `college` filter | 8 school + position prompts with 40+ answers: Ohio State WR, LSU DB, Miami (FL) LB, Florida State DB, Penn State LB, Notre Dame OL, USC WR, Michigan DL |
 | other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
 
 Reasons:
@@ -345,6 +350,9 @@ Reasons:
 | other | 0.2754 | 0.0892 | 0.0324 | below 0.0324 |
 | award | 0.7155 | 0.4705 | 0.3270 | below 0.3270 |
 | stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
+| college | 0.3696 | 0.1587 | 0.0676 | below 0.0676 |
+
+- **College group added 2026-11-11** (`--groups college`; the other groups keep their values). College pools are every player from a school at a position, with no production bar, so they run deeper than stat pools (stat qualifiers all had a big season): on the stat thresholds Miami (FL) any position came out 7 · 22 · 42 · 273 and LSU DB 2 · 5 · 13 · 48; on "other" (A = 1 inflates R) Ohio State WR got 0 Sleepers. Calibration set: 8 prompts / 463 answers, same 10/35/35/20 split, equal per-prompt weighting; Alabama RB and Georgia RB (39 each) missed the 40-answer bar. Spread (Starter · Backup · Hidden Gem · Sleeper + YKB Kid): Ohio State WR 7 · 22 · 17 · 3 + Reggie Germany, LSU DB 6 · 19 · 22 · 21 + Anthony Marshall, Miami (FL) LB 5 · 19 · 20 · 9 + Spencer Adkins, Florida State DB 5 · 21 · 17 · 11 + Walt Sumner, Penn State LB 7 · 22 · 30 · 17 + Glenn Carson, Notre Dame OL 5 · 22 · 22 · 17 + Mike Brennan, USC WR 6 · 17 · 15 · 11 + Will Buchanon, Michigan DL 4 · 16 · 18 · 2 + Kerwin Waldroup (fails the ≥ 3 Sleeper rule; don't ship as is).
 
 - **Award recalibrated 2026-11-08** for award `F = s_pv` (above): same 6 prompts / 284 answers, same 10/35/35/20 split, equal per-prompt weighting. Was 0.6832 / 0.4495 / 0.2993. With the old F, today's data reproduces the old award values exactly, so the whole shift comes from the F change. Only the award group was refrozen (`--groups award`): rerunning other on today's data gives slightly different values (1,621 answers; Backup 0.0900), from data refreshes since the freeze rather than any rule change, so other and stat keep their recorded values.
 - Award calibration spread after the change (Starter · Backup · Hidden Gem · Sleeper): MVP 6 · 18 · 23 · 4, DPOY 3 · 16 · 15 · 9, OROY 4 · 17 · 19 · 19, OPOY 5 · 18 · 19 · 2, DROY 2 · 14 · 15 · 29, Comeback 5 · 12 · 8 · 2.
