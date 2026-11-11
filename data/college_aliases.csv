@@ -1,0 +1,97 @@
+alias,canonical
+# Hand-maintained (spec §3 college). Raw nflverse spelling (after first-segment, entity
+# and "St." -> "State" rules) -> canonical name. Lowercase match. Review on each refresh:
+# probe --college-report lists unmapped near-duplicates.
+# Miami: draft data says "Miami (FL)" / "Miami (OH)"; roster data says bare "Miami" for
+# Miami (FL) (checked against draft picks, see college report) and "Miami (Ohio)" / "Miami, O."
+miami,Miami (FL)
+miami (fl),Miami (FL)
+miami (fla.),Miami (FL)
+miami (florida),Miami (FL)
+miami (oh),Miami (OH)
+miami (ohio),Miami (OH)
+"miami, o.",Miami (OH)
+louisiana state,LSU
+southern california,USC
+brigham young,BYU
+central florida,UCF
+southern methodist,SMU
+southern miss,Southern Mississippi
+alabama-birmingham,UAB
+texas christian,TCU
+nevada-las vegas,UNLV
+ohio u.,Ohio
+pittsburg state (ks),Pittsburg State
+southern utah state,Southern Utah
+southern u.,Southern
+southern university,Southern
+mississippi valley state university,Mississippi Valley State
+texas a&m university-kingsville,Texas A&M-Kingsville
+texas a&m-commerce,East Texas A&M
+"notre dame college, ohio",Notre Dame College (Ohio)
+n.c. state,North Carolina State
+nc state,North Carolina State
+louisiana-lafayette,Louisiana
+ala-birmingham,UAB
+tennessee-chattanooga,Chattanooga
+s.f. austin,Stephen F. Austin State
+stephen f. austin,Stephen F. Austin State
+texas-arlington,Texas-Arlington
+boston univ.,Boston University
+la-monroe,Louisiana-Monroe
+kutztown (pa),Kutztown
+umass amherst,Massachusetts
+umass,Massachusetts
+north carolina-charlotte,Charlotte
+california state-fullerton,Cal State-Fullerton
+ut martin,Tennessee-Martin
+lenoir-rhyne,Lenoir Rhyne
+"charleston, w. va.",Charleston (WV)
+southeast missouri,Southeast Missouri State
+northwestern state-louisiana,Northwestern State (LA)
+missouri southern state,Missouri Southern
+"regina, can.",Regina
+georgetown college (ky),Georgetown (KY)
+saginaw valley,Saginaw Valley State
+ark-pine bluff,Arkansas-Pine Bluff
+university of arkansas at pine bluff,Arkansas-Pine Bluff
+arkansas pine bluff,Arkansas-Pine Bluff
+"concordia, st. paul",Concordia-St. Paul (MN)
+concordia-st.paul (mn),Concordia-St. Paul (MN)
+concordia-st. paul,Concordia-St. Paul (MN)
+missouri western,Missouri Western State
+manitoba (canada),Manitoba
+st. paul's (va),St. Paul's
+saint john's (mn),St. John's (MN)
+"northeastern university, mass",Northeastern
+western state (co),Western State
+wisconsin–lacrosse,Wisconsin-La Crosse
+wisconsin la crosse,Wisconsin-La Crosse
+wisconsin–whitewater,Wisconsin-Whitewater
+penn,Pennsylvania
+grambling,Grambling State
+ne state (ok),Northeastern State (OK)
+northeastern state (okla.),Northeastern State (OK)
+"california, pa.",California (PA)
+central missouri state,Central Missouri
+winston salem state,Winston-Salem State
+the citadel,Citadel
+middle tennessee state,Middle Tennessee
+grand valley,Grand Valley State
+"monmouth, n.j.",Monmouth
+east central (ok),East Central
+university of u. of pacific,Pacific
+cal poly-s.l.o.,Cal Poly
+cal poly-san luis obispo,Cal Poly
+fort hays,Fort Hays State
+queens (canada),Queen's (Canada)
+queens university (canada),Queen's (Canada)
+california state - long beach,Long Beach State
+mesa state,Colorado Mesa
+west texas state,West Texas A&M
+bowling green state,Bowling Green
+boston university,Boston University
+wabash college,Wabash
+benedictine college,Benedictine
+virginia military inst.,VMI
+virginia military institute,VMI

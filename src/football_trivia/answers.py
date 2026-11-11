@@ -16,6 +16,9 @@ Filters
     award           "mvp" or ["oroy", "mvp"] ("won X and Y"), AP only
     award_any       ["oroy", "droy"]: won any of them ("X or Y", the union of winners), AP only
     stat_threshold  {"stat": "receiving_yards", "min": 1500} in one regular season (1999+)
+    college         "Ohio State" or ["Ohio State", ...]: final college attended (player_college,
+                    normalized via colleges.normalize). Trait prompt (A = 1), but validity still
+                    needs a counted NFL season (QBs: a start), all eras
 
 Validity (spec §3): QBs need a regular-season start in context (pre-1950: active roster
 as a QB). Everyone else needs a counted season in context (player_team_seasons.counted).
@@ -36,6 +39,7 @@ TIGHT_MARGIN = 3        # within this many of the minimum: flagged in batch prob
 DAY_AVG_MAX = 300       # average across a day's prompts, warning only (§6)
 QB_LIST_FIRST_SEASON = 1950
 STATS_FIRST_SEASON = 1999
+COLLEGE_FIRST_SEASON = 1974  # nflverse colleges cover ~99.6% of players with a 1974+ season, 0% before (§3)
 POSITION_GROUPS = {"QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB", "K", "P", "LS"}
 STATS = {  # stat_threshold names -> raw_player_week expression
     "passing_yards": "passing_yards", "passing_tds": "passing_tds",
@@ -66,7 +70,8 @@ class Prompt:
     @property
     def is_trait(self) -> bool:
         f = self.filters
-        return self.type == "trait" or ("award" in f or "award_any" in f or "stat_threshold" in f) and not (
+        return self.type == "trait" or ("award" in f or "award_any" in f or "stat_threshold" in f
+                                        or "college" in f) and not (
             "team" in f or "teams_all" in f or "conference" in f or "division" in f)
 
 
@@ -128,7 +133,7 @@ AWARD_KEYS = {"award", "award_any"}  # either makes a prompt an award prompt (§
 def build_answers(con, prompt: Prompt) -> Result:
     f = prompt.filters
     unknown = set(f) - {"team", "teams_all", "position", "conference", "division", "league",
-                        "season_min", "season_max", "award", "award_any", "stat_threshold"}
+                        "season_min", "season_max", "award", "award_any", "stat_threshold", "college"}
     if unknown:
         raise ValueError(f"unknown filters: {sorted(unknown)}")
     warnings: list[str] = []
@@ -140,8 +145,18 @@ def build_answers(con, prompt: Prompt) -> Result:
             warnings.append(f"stat prompt: season_min set to {STATS_FIRST_SEASON} (season stats start then)")
         if "1999" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == STATS_FIRST_SEASON:
             warnings.append('stat prompt must state the date in its text or subtitle, e.g. "(since 1999)"')
+    if "college" in f:
+        # §5: college data starts with players active in 1974; the text must say so (like stats/1999)
+        if int(f.get("season_min", 0)) < COLLEGE_FIRST_SEASON:
+            f = {**f, "season_min": COLLEGE_FIRST_SEASON}
+            warnings.append(f"college prompt: season_min set to {COLLEGE_FIRST_SEASON} (college data starts then)")
+        if "1974" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == COLLEGE_FIRST_SEASON:
+            warnings.append('college prompt must state the date in its text or subtitle, e.g. "Since 1974"')
     trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS & f.keys() or "stat_threshold" in f) else None
-    if prompt.is_trait:
+    if "college" in f:  # §3 college: the trait narrows the pool, validity still needs play
+        college_ids = _college_players(con, f["college"], warnings)
+        trait_ids = college_ids if trait_ids is None else trait_ids & college_ids
+    if prompt.is_trait and "college" not in f:
         answers = _trait_answers(con, trait_ids, f)
         return Result(prompt, answers, {}, warnings + _range_warnings(answers.height))
 
@@ -269,6 +284,20 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
             GROUP BY player_id, season HAVING sum({stat}) >= ?""", [max(smin, STATS_FIRST_SEASON), smax, st["min"]]).fetchall()}
         sets.append(ids)
     return set.intersection(*sets) if sets else set()
+
+
+def _college_players(con, college, warnings: list[str]) -> set[str]:
+    from .colleges import normalize
+    from .db import table_exists
+    if not table_exists(con, "player_college"):
+        raise RuntimeError("no player_college table: run `build` (needs raw_draft_picks from refresh)")
+    wanted = [normalize(c) for c in _as_list(college)]
+    known = {r[0] for r in con.execute("SELECT DISTINCT college FROM player_college").fetchall()}
+    for w in wanted:
+        if w not in known:
+            warnings.append(f"college {w!r} has no players; check data/college_aliases.csv")
+    return {r[0] for r in con.execute(
+        f"SELECT player_id FROM player_college WHERE college IN ({', '.join('?' * len(wanted))})", wanted).fetchall()}
 
 
 def _trait_answers(con, ids: set[str], f: dict) -> pl.DataFrame:

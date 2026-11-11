@@ -32,5 +32,13 @@ def refresh(con, log=print) -> None:
     log(f"nflverse: snap counts ({SNAP_COUNTS_FIRST_SEASON}-present)")
     write_table(con, "raw_snap_counts", nfl.load_snap_counts(seasons=True))
 
+    refresh_draft_picks(con, log)
+
     log("nflverse: teams")
     write_table(con, "raw_teams", nfl.load_teams())
+
+
+def refresh_draft_picks(con, log=print) -> None:
+    """Draft picks 1980-present: the final college (PFR's college at the draft), spec §3 college."""
+    log("nflverse: draft picks (1980-present)")
+    write_table(con, "raw_draft_picks", nfl.load_draft_picks())

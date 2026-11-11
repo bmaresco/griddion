@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from .db import DATA_DIR, run, write_table
+from .db import DATA_DIR, run, table_exists, write_table
 from .names import norm_name
 from .sources import ap_awards, qb_lists
 from .sources.wikipedia import parse_highlights
@@ -44,6 +44,7 @@ def build(con, log=print) -> None:
     _team_seasons(con, log)
     _production(con, log)
     _aliases(con, log)
+    build_colleges(con, log)
     _coverage(con, log)
 
 
@@ -469,3 +470,40 @@ def _production(con, log) -> None:
     GROUP BY player_id, season, team
     """)
     log(f"  player_season_production: {con.execute('SELECT count(*) FROM player_season_production').fetchall()[0][0]} rows")
+
+
+def build_colleges(con, log=print) -> None:
+    """player_college: one canonical final college per player (spec §3 college filter).
+
+    Priority: draft picks (1980+, the college at the draft = final school) > nflverse players
+    (college_name) > latest roster row. Multi-school strings keep the first segment (the final school);
+    names go through colleges.normalize (rules + data/college_aliases.csv).
+    """
+    from .colleges import normalize
+    log("build: player_college")
+    if not table_exists(con, "raw_draft_picks"):
+        log("  raw_draft_picks missing: run refresh (draft picks) first; drafted colleges skipped")
+    draft = con.sql("""
+        SELECT p.player_id, d.college AS raw, d.season AS draft_season, d.round AS draft_round
+        FROM raw_draft_picks d JOIN players p
+          ON (d.gsis_id IS NOT NULL AND d.gsis_id = p.gsis_id) OR (d.pfr_player_id IS NOT NULL AND d.pfr_player_id = p.pfr_id)
+        WHERE d.college IS NOT NULL
+        QUALIFY row_number() OVER (PARTITION BY p.player_id ORDER BY d.season DESC) = 1
+    """).pl().with_columns(source=pl.lit("draft")) if table_exists(con, "raw_draft_picks") else None
+    nflp = con.sql("""
+        SELECT p.player_id, r.college_name AS raw, NULL::INT AS draft_season, NULL::INT AS draft_round, 'players' AS source
+        FROM raw_players r JOIN players p ON r.gsis_id = p.gsis_id WHERE r.college_name IS NOT NULL
+    """).pl()  # nflverse players: one current college per person, all eras it covers
+    roster = con.sql("""
+        SELECT player_id, college AS raw, NULL::INT AS draft_season, NULL::INT AS draft_round, 'roster' AS source
+        FROM players WHERE college IS NOT NULL
+    """).pl()  # players.college: latest roster row with a college (identity step)
+    df = pl.concat([d for d in (draft, nflp, roster) if d is not None], how="vertical_relaxed")
+    prio = {"draft": 0, "players": 1, "roster": 2}
+    df = (df.with_columns(prio=pl.col("source").replace_strict(prio))
+          .sort("prio").unique("player_id", keep="first").drop("prio")
+          .with_columns(college=pl.col("raw").map_elements(normalize, return_dtype=pl.Utf8))
+          .filter(pl.col("college").is_not_null()))
+    write_table(con, "player_college", df.select("player_id", "college", "raw", "source", "draft_season", "draft_round"))
+    log(f"  player_college: {df.height} players; by source: "
+        + ", ".join(f"{k} {(df['source'] == k).sum()}" for k in prio))

@@ -175,11 +175,14 @@ def load_thresholds() -> dict | None:
 
 
 def threshold_kind(prompt: Prompt) -> str:
-    """§7: three threshold groups. Trait prompts (A = 1) sit on a different scale from the rest,
-    and award winners are a much more famous pool than stat qualifiers."""
+    """§7: four threshold groups. Trait prompts (A = 1) sit on a different scale from the rest,
+    award winners are a much more famous pool than stat qualifiers, and college pools (every
+    player from a school, no production bar) run deeper than either."""
     if not prompt.is_trait:
         return "other"
-    return "award" if AWARD_KEYS & prompt.filters.keys() else "stat"
+    if AWARD_KEYS & prompt.filters.keys():
+        return "award"
+    return "college" if "college" in prompt.filters else "stat"
 
 
 def _tier_expr(kind: str) -> pl.Expr:
