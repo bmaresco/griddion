@@ -24,7 +24,8 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from .answers import MIN_ANSWERS, STATS, TIGHT_MARGIN, Prompt, _as_list, _context_where, build_answers
+from .answers import (MIN_ANSWERS, STATS, TIGHT_MARGIN, WEEKLY_STAT_KEYS, Prompt, _as_list, _context_where,
+                      build_answers, weekly_stat_qualifiers)
 from .db import ROOT, connect
 from .matching import NAME_GROUPS, allowed_edits, bank_aliases
 from .scoring import TIERS, fame, load_thresholds, score_answers, threshold_kind
@@ -125,6 +126,34 @@ def _games_complete(rows: pl.DataFrame) -> bool:
                for s, g in rows.select("season", "pos_group").iter_rows())
 
 
+def _fmt_stat(v) -> str:
+    v = float(v)
+    return f"{v:,.1f}".rstrip("0").rstrip(".") if v != int(v) else f"{int(v):,}"
+
+
+def _weekly_context(con, f: dict, ids: set[str]) -> dict[str, str]:
+    """§6 context lines for the weekly stat filters (first one present, in this order):
+    rookie_stat  "84 rec · 2014 (rookie)"
+    game_stat    "4.5 sacks · Wk 12, 2019"; 2+ games: "3 games · best 6 sacks · Wk 4, 2007"
+    window_stat  "7 TD · 2011–24" (seasons that contributed)"""
+    for key in ("rookie_stat", "game_stat", "window_stat"):
+        if key not in f:
+            continue
+        q = weekly_stat_qualifiers(con, f, key).filter(pl.col("player_id").is_in(list(ids)))
+        unit = STAT_UNIT[f[key]["stat"]]
+        out = {}
+        for r in q.iter_rows(named=True):
+            if key == "rookie_stat":
+                out[r["player_id"]] = f"{_fmt_stat(r['total'])} {unit} · {r['season']} (rookie)"
+            elif key == "game_stat":
+                best = f"{_fmt_stat(r['best'])} {unit} · Wk {r['best_week']}, {r['best_season']}"
+                out[r["player_id"]] = best if r["games"] == 1 else f"{r['games']} games · best {best}"
+            else:
+                out[r["player_id"]] = f"{_fmt_stat(r['total'])} {unit} · {_span(r['first_season'], r['last_season'])}"
+        return out
+    return {}
+
+
 def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
     """§6 context line per answer, from Step 1 evidence."""
     f = prompt.filters
@@ -153,6 +182,8 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                 parts.setdefault(pid, {})[a] = seasons
             return {pid: " · ".join(f"{AWARD_LABEL.get(a, a.upper())} {', '.join(map(str, d[a]))}"
                                     for a in awards if a in d) for pid, d in parts.items()}
+        if WEEKLY_STAT_KEYS & f.keys():
+            return _weekly_context(con, f, set(ids))
         if st := f.get("stat_threshold"):
             expr, unit = STATS[st["stat"]], STAT_UNIT[st["stat"]]
             rows = con.execute(f"""

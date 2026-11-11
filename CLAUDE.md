@@ -121,6 +121,14 @@ Supported filter types (build as a reusable library):
 - `award` (one or more; "won X and Y")
 - `award_any` (two or more; "won X or Y": the union of winners, each award from its own AP start season). The prompt text must name every award and say "or" (`check_text.py`). Award prompts either way (§7 award group).
 - `stat_threshold` (e.g. receiving yards ≥ 1500 in a single season)
+- **Weekly stat filters** (added 2026-11-11; nflverse weekly player stats, regular season, **1999+**: `build_answers` clamps `season_min` to 1999 and `/probe` warns unless the text or subtitle says "1999", e.g. `Since 1999`):
+  - `rookie_stat` `{"stat", "min"}`: total in the player's **first NFL season** = his first counted season (§3: a game, or the roster rule), not nflverse's `rookie_season`, which is earlier for 1,536 players, mostly a practice-squad / IR / cut year with no game. Only 1999+ rookies can qualify. Known limit: a pre-2013 player who played with no recorded stat (Victor Cruz 2010: 3 special-teams games, nflverse has him on IR all season) gets his next season as his rookie year.
+  - `game_stat` `{"stat", "min", "games_min": 1}`: at least `games_min` regular-season games at or above `min`.
+  - `window_stat` `{"stat", "min"}`: total over `season_min`–`season_max` ≥ `min`.
+  - `position_not` (with these three only): exclude a group/code or list, e.g. `["RB"]` (the RB group includes FB).
+  - **Position is per stat row**: `position` / `position_not` test the player's listed position for **that team-season** (`player_team_seasons`), because the weekly row's own `position` is his current one (Cordarrelle Patterson shows "RB" for his 2013–20 WR seasons). So "a non-RB with a rushing TD" counts Patterson's WR-era TDs and Taysom Hill's QB and TE seasons, never Juszczyk (FB).
+  - **Coverage (checked 2026-11-11):** sacks (half sacks included) and INTs are present every season since 1999 (Strahan 2001 22.5, Allen 2011 22, Watt 2021 22.5, Reed 2004 9, Bailey 2006 10, Diggs 2021 11 all match). **Three games are missing entirely** from nflverse's weekly player stats: 1999 Wk 1 BAL@STL, 2000 Wk 3 SD@KC, 2000 Wk 6 BUF@MIA (e.g. Kevin Carter's 1999 total reads 15 vs the official 17). Rows with no player are uncredited team sacks and never answers.
+  - Weekly stat prompts are trait prompts (A = 1) in the **stat** threshold group (§7).
 - `college` (a school or list of schools: final college attended, §3). `build_answers` clamps `season_min` to **1974** and `/probe` warns if the text doesn't say "1974". College prompts are trait prompts (A = 1) in the **college** threshold group (§7)
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
@@ -160,6 +168,10 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 | Stat | best qualifying season's stat · season | `1,871 yds · 2015` |
 | Award | season(s) won | `Won 2011` |
 | Award, either (`award_any`) | each award won · seasons | `MVP 2007, 2010 · OPOY 2007` |
+| Rookie stat | rookie total · season | `91 rec · 2014 (rookie)` |
+| Game stat | best game; with 2+ qualifying games, the count first | `4.5 sacks · Wk 12, 2019` / `9 games · best 7 TD · Wk 1, 2013` |
+| Window stat | total · seasons that contributed | `7 TD · 2016–22` |
+| College | teams in context · seasons (1974+) | `Bills · 2001` |
 
 - Seasons render as `2009–16` (single season `2008`; full years when the century changes, `1999–2004`). Counts are singular at 1 (`1 start`).
 - **Games are "complete"** for a stint when every counted season is 2013+ (snap counts), or 1999+ for QB/RB/WR/TE (stat rows track their appearances). Otherwise the line uses seasons.
@@ -333,7 +345,7 @@ Set once, objectively:
 | Group | Prompts | Calibration set |
 |---|---|---|
 | award | trait prompts with an `award` or `award_any` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
-| stat | trait prompts with a `stat_threshold` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
+| stat | trait prompts with a `stat_threshold`, `rookie_stat`, `game_stat` or `window_stat` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
 | college | trait prompts with a `college` filter | 8 school + position prompts with 40+ answers: Ohio State WR, LSU DB, Miami (FL) LB, Florida State DB, Penn State LB, Notre Dame OL, USC WR, Michigan DL |
 | other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
 
@@ -352,6 +364,7 @@ Reasons:
 | stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
 | college | 0.3696 | 0.1587 | 0.0676 | below 0.0676 |
 
+- **Weekly stat filters use the stat group (decided 2026-11-11).** On the 9 probe prompts with 25+ answers (`prompts/weekly_stat_probe.jsonl`), the stat thresholds give a pooled 10 / 30 / 34 / 26% (target 10 / 35 / 35 / 20), and calibrating those prompts alone would give 0.5487 / 0.2950 / 0.1741, within ~0.02 of the stat values. Failures come from the pool (famous QBs: QB 5+ TD game 9 · 38 · 9 · 0), not the scale, so no new group.
 - **College group added 2026-11-11** (`--groups college`; the other groups keep their values). College pools are every player from a school at a position, with no production bar, so they run deeper than stat pools (stat qualifiers all had a big season): on the stat thresholds Miami (FL) any position came out 7 · 22 · 42 · 273 and LSU DB 2 · 5 · 13 · 48; on "other" (A = 1 inflates R) Ohio State WR got 0 Sleepers. Calibration set: 8 prompts / 463 answers, same 10/35/35/20 split, equal per-prompt weighting; Alabama RB and Georgia RB (39 each) missed the 40-answer bar. Spread (Starter · Backup · Hidden Gem · Sleeper + YKB Kid): Ohio State WR 7 · 22 · 17 · 3 + Reggie Germany, LSU DB 6 · 19 · 22 · 21 + Anthony Marshall, Miami (FL) LB 5 · 19 · 20 · 9 + Spencer Adkins, Florida State DB 5 · 21 · 17 · 11 + Walt Sumner, Penn State LB 7 · 22 · 30 · 17 + Glenn Carson, Notre Dame OL 5 · 22 · 22 · 17 + Mike Brennan, USC WR 6 · 17 · 15 · 11 + Will Buchanon, Michigan DL 4 · 16 · 18 · 2 + Kerwin Waldroup (fails the ≥ 3 Sleeper rule; don't ship as is).
 
 - **Award recalibrated 2026-11-08** for award `F = s_pv` (above): same 6 prompts / 284 answers, same 10/35/35/20 split, equal per-prompt weighting. Was 0.6832 / 0.4495 / 0.2993. With the old F, today's data reproduces the old award values exactly, so the whole shift comes from the F change. Only the award group was refrozen (`--groups award`): rerunning other on today's data gives slightly different values (1,621 answers; Backup 0.0900), from data refreshes since the freeze rather than any rule change, so other and stat keep their recorded values.

@@ -16,6 +16,12 @@ Filters
     award           "mvp" or ["oroy", "mvp"] ("won X and Y"), AP only
     award_any       ["oroy", "droy"]: won any of them ("X or Y", the union of winners), AP only
     stat_threshold  {"stat": "receiving_yards", "min": 1500} in one regular season (1999+)
+    rookie_stat     {"stat": "receptions", "min": 70}: in the player's first NFL season (1999+)
+    game_stat       {"stat": "sacks", "min": 3.5, "games_min": 1}: single regular-season game(s) (1999+)
+    window_stat     {"stat": "rushing_tds", "min": 1}: total over season_min..season_max (1999+)
+    position_not    group/code or list, e.g. ["RB"] (RB group includes FB): with the three above only
+                    The three weekly filters apply position / position_not to each stat row using the
+                    player's listed position for that team-season (player_team_seasons), not his current one
     college         "Ohio State" or ["Ohio State", ...]: final college attended (player_college,
                     normalized via colleges.normalize). Trait prompt (A = 1), but validity still
                     needs a counted NFL season (QBs: a start), all eras
@@ -34,6 +40,7 @@ import polars as pl
 
 from .sources.wikipedia import AP_FIRST_SEASON
 
+TRAIT_KEYS = {"award", "award_any", "stat_threshold", "rookie_stat", "game_stat", "window_stat", "college"}
 MIN_ANSWERS = 25        # per prompt, hard stop (§6)
 TIGHT_MARGIN = 3        # within this many of the minimum: flagged in batch probe and the diff report (§6)
 DAY_AVG_MAX = 300       # average across a day's prompts, warning only (§6)
@@ -70,8 +77,7 @@ class Prompt:
     @property
     def is_trait(self) -> bool:
         f = self.filters
-        return self.type == "trait" or ("award" in f or "award_any" in f or "stat_threshold" in f
-                                        or "college" in f) and not (
+        return self.type == "trait" or (bool(TRAIT_KEYS & f.keys())) and not (
             "team" in f or "teams_all" in f or "conference" in f or "division" in f)
 
 
@@ -126,6 +132,8 @@ def _context_where(f: dict, teams: list[str] | None, alias: str = "t") -> tuple[
 
 
 AWARD_KEYS = {"award", "award_any"}  # either makes a prompt an award prompt (§7 award group)
+WEEKLY_STAT_KEYS = {"rookie_stat", "game_stat", "window_stat"}  # weekly player stats, 1999+ (§5)
+STAT_KEYS = {"stat_threshold"} | WEEKLY_STAT_KEYS
 
 
 # ---------------------------------------------------------- build_answers
@@ -133,12 +141,15 @@ AWARD_KEYS = {"award", "award_any"}  # either makes a prompt an award prompt (§
 def build_answers(con, prompt: Prompt) -> Result:
     f = prompt.filters
     unknown = set(f) - {"team", "teams_all", "position", "conference", "division", "league",
-                        "season_min", "season_max", "award", "award_any", "stat_threshold", "college"}
+                        "season_min", "season_max", "award", "award_any", "stat_threshold", "college",
+                        "rookie_stat", "game_stat", "window_stat", "position_not"}
     if unknown:
         raise ValueError(f"unknown filters: {sorted(unknown)}")
     warnings: list[str] = []
 
-    if "stat_threshold" in f:
+    if "position_not" in f and not WEEKLY_STAT_KEYS & f.keys():
+        raise ValueError("position_not works only with rookie_stat / game_stat / window_stat")
+    if STAT_KEYS & f.keys():
         # §5: stat prompts are 1999+ and must say so, so right pre-1999 answers aren't marked wrong
         if int(f.get("season_min", 0)) < STATS_FIRST_SEASON:
             f = {**f, "season_min": STATS_FIRST_SEASON}
@@ -152,7 +163,7 @@ def build_answers(con, prompt: Prompt) -> Result:
             warnings.append(f"college prompt: season_min set to {COLLEGE_FIRST_SEASON} (college data starts then)")
         if "1974" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == COLLEGE_FIRST_SEASON:
             warnings.append('college prompt must state the date in its text or subtitle, e.g. "Since 1974"')
-    trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS & f.keys() or "stat_threshold" in f) else None
+    trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS | STAT_KEYS) & f.keys() else None
     if "college" in f:  # §3 college: the trait narrows the pool, validity still needs play
         college_ids = _college_players(con, f["college"], warnings)
         trait_ids = college_ids if trait_ids is None else trait_ids & college_ids
@@ -283,7 +294,66 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
             WHERE season_type = 'REG' AND season BETWEEN ? AND ? AND player_id IS NOT NULL
             GROUP BY player_id, season HAVING sum({stat}) >= ?""", [max(smin, STATS_FIRST_SEASON), smax, st["min"]]).fetchall()}
         sets.append(ids)
+    for key in WEEKLY_STAT_KEYS & f.keys():
+        sets.append(set(weekly_stat_qualifiers(con, f, key)["player_id"].to_list()))
     return set.intersection(*sets) if sets else set()
+
+
+def weekly_stat_rows(con, f: dict, stat: str) -> pl.DataFrame:
+    """Regular-season stat rows (one per player-game), 1999+, in the prompt's seasons, kept only
+    where the player's listed position for that team-season passes position / position_not.
+    Columns: player_id, season, week, v."""
+    expr = STATS.get(stat)
+    if expr is None:
+        raise ValueError(f"unknown stat {stat!r}; known: {sorted(STATS)}")
+    smin, smax = max(int(f.get("season_min", 0)), STATS_FIRST_SEASON), int(f.get("season_max", 9999))
+    mask = []
+    if "position" in f:
+        mask.append(_position_clause(f["position"], "x"))
+    if "position_not" in f:
+        mask.append("NOT " + _position_clause(f["position_not"], "x"))
+    return con.sql(f"""
+        WITH x AS (
+            SELECT w.player_id, w.season, w.week, ({expr}) AS v,
+                   -- listed position that team-season; the weekly row's own position is the
+                   -- player's current one (Cordarrelle Patterson "RB" in 2014), so it's only a fallback
+                   coalesce(t.pos_group, g.pos_group) AS pos_group, coalesce(t.position, w.position) AS position,
+                   t.depth_chart_position
+            FROM raw_player_week w
+            LEFT JOIN team_franchises fr ON fr.code = w.team AND w.season BETWEEN fr.season_min AND fr.season_max
+            LEFT JOIN player_team_seasons t ON t.player_id = w.player_id AND t.season = w.season AND t.franchise = fr.franchise
+            LEFT JOIN position_groups g ON g.code = w.position
+            WHERE w.season_type = 'REG' AND w.player_id IS NOT NULL AND w.season BETWEEN {smin} AND {smax})
+        SELECT player_id, season, week, v FROM x
+        WHERE v IS NOT NULL {"AND " + " AND ".join(mask) if mask else ""}
+    """).pl()
+
+
+def weekly_stat_qualifiers(con, f: dict, key: str) -> pl.DataFrame:
+    """Players meeting one weekly filter, with the evidence for the context line (§6).
+    rookie_stat: player_id, season, total · game_stat: player_id, games, best, best_season, best_week
+    · window_stat: player_id, total, first_season, last_season (seasons that contributed)."""
+    spec = f[key]
+    rows = weekly_stat_rows(con, f, spec["stat"])
+    if key == "game_stat":
+        hit = rows.filter(pl.col("v") >= spec["min"]).sort(["v", "season", "week"], descending=[True, False, False])
+        return (hit.group_by("player_id", maintain_order=True)
+                .agg(games=pl.len(), best=pl.col("v").first(), best_season=pl.col("season").first(),
+                     best_week=pl.col("week").first())
+                .filter(pl.col("games") >= int(spec.get("games_min", 1))))
+    if key == "window_stat":
+        return (rows.group_by("player_id").agg(total=pl.col("v").sum(),
+                                               first_season=pl.col("season").filter(pl.col("v") > 0).min(),
+                                               last_season=pl.col("season").filter(pl.col("v") > 0).max())
+                .filter(pl.col("total") >= spec["min"]))
+    if key == "rookie_stat":
+        # first NFL season = first counted season (a game, or the §3 roster rule), any era; only
+        # 1999+ rookies can qualify since weekly stats start then
+        first = con.sql("SELECT player_id, min(season) AS season FROM player_team_seasons "
+                        "WHERE counted OR qb_starts > 0 GROUP BY 1").pl()
+        return (rows.join(first, on=["player_id", "season"]).group_by("player_id", "season")
+                .agg(total=pl.col("v").sum()).filter(pl.col("total") >= spec["min"]))
+    raise ValueError(key)
 
 
 def _college_players(con, college, warnings: list[str]) -> set[str]:
