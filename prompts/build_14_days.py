@@ -229,7 +229,7 @@ P3 = {  # day -> college prompt
     9: college("UCLA", "DB"), 10: college("USC", "WR"), 11: college("Georgia", "LB"),
     12: college("Notre Dame", "OL"), 13: college("Auburn", "RB"), 14: college("Michigan", "LB"),
 }
-P4 = {  # day -> weekly stat prompt (250+ answers: Day 4 non-RB rushing TD 412, Day 13 DL INT 326)
+P4 = {  # day -> weekly stat prompt (250+ answers: Day 4 non-RB rushing TD 412)
     3: weekly("Name a player with 3.5+ sacks in a game", "game_stat", "sacks", 3.5),
     4: weekly("Name a non-running back with a rushing TD", "window_stat", "rushing_tds", 1, pos_not=["RB"],
               sub="Since 1999 · QBs count · Fullbacks count as running backs"),
@@ -241,7 +241,7 @@ P4 = {  # day -> weekly stat prompt (250+ answers: Day 4 non-RB rushing TD 412, 
     10: weekly("Name an RB with 100+ receiving yards in a game", "game_stat", "receiving_yards", 100, pos="RB"),
     11: weekly("Name a non-QB who threw a TD pass", "window_stat", "passing_tds", 1, pos_not=["QB"]),
     12: weekly("Name a player with 200+ rushing yards in a game", "game_stat", "rushing_yards", 200),
-    13: weekly("Name a defensive lineman with an interception", "window_stat", "interceptions", 1, pos="DL"),
+    13: weekly("Name a WR who threw a TD pass", "window_stat", "passing_tds", 1, pos="WR"),  # was DL with an INT (326)
     14: weekly("Name a player with 4+ interceptions in his rookie season", "rookie_stat", "interceptions", 4),
 }
 AP1 = "AP first team, 2000–2025 seasons"

@@ -92,7 +92,7 @@ Botched Trick Play is manual only (§2); a prompt carries it as "botched_trick_p
 | 13 | 1 | Name a Dolphins QB | 43 | 9 · 11 · 14 · 8 | — |
 | 13 | 2 | Name a Saints WR | 179 | 6 · 45 · 70 · 57 | — |
 | 13 | 3 | Name an RB who played college football at Auburn | 34 | 3 · 16 · 8 · 6 | — |
-| 13 | 4 | Name a defensive lineman with an interception | 326 | 8 · 28 · 74 · 215 | bottom-heavy (89% Hidden Gem+Sleeper) |
+| 13 | 4 | Name a WR who threw a TD pass | 52 | 5 · 14 · 20 · 12 | — |
 | 13 | 5 | Name an NFC TE from the 1990s | 172 | 5 · 38 · 79 · 49 | — |
 | 13 | 6 | Name a QB with a 200+ rushing yard season | 93 | 6 · 45 · 37 · 4 | — |
 | 13 | 7 | Name a Super Bowl MVP | 50 | 5 · 19 · 19 · 6 | — |

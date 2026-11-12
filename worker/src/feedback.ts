@@ -12,7 +12,7 @@
 export interface Env {
   DB: D1Database;
   FEEDBACK_LIMITER?: RateLimit;   // absent in unit tests / misconfigured envs: limiter is skipped
-  LAUNCH_DATE: string;            // "YYYY-MM-DD", Drive #1
+  LAUNCH_DATE: string;            // "YYYY-MM-DD", Drive #1's date (the original launch; never shifted)
   ALLOWED_ORIGINS: string;        // comma-separated; a request with another Origin is refused
 }
 
@@ -27,7 +27,7 @@ export const json = (status: number, body: unknown, headers: Record<string, stri
     status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
   });
 
-/** Drive number "today" in America/New_York (spec §9: rollover at 00:00 ET). */
+/** Days since launch + 1 in America/New_York: an upper bound on today's drive number (spec §9). */
 export function currentDrive(launch: string, now: Date = new Date()): number {
   const et = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" })
     .format(now);                                   // "YYYY-MM-DD"
@@ -83,7 +83,9 @@ export async function handleFeedback(req: Request, env: Env, now: Date = new Dat
 
   let body: unknown;
   try { body = JSON.parse(raw); } catch { return json(400, { error: "invalid JSON" }); }
-  // tomorrow's drive is allowed: a player can finish just after midnight ET on a stale page
+  // Upper bound only: drive numbers come from public/schedule.json, whose dates can only lag
+  // "days since launch" (a relaunch shift moves drives later, never earlier), so this bound stays
+  // valid after a shift, just looser. +1: a player can finish just after midnight ET on a stale page.
   const fb = validateFeedback(body, currentDrive(env.LAUNCH_DATE, now) + 1);
   if (typeof fb === "string") return json(400, { error: fb });
 

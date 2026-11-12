@@ -205,7 +205,7 @@ Written from prompts_14_days.jsonl (prompts/build_14_days.py). Drives 1–2 are 
    *All seasons (franchise history) · Must have played in a regular-season game (on an active roster before 1999)*
 3. **Name an RB who played college football at Auburn**
    *Since 1974 · Must have played in an NFL regular-season game*
-4. **Name a defensive lineman with an interception**
+4. **Name a WR who threw a TD pass**
    *Since 1999 · Regular season*
 5. **Name an NFC TE from the 1990s**
    *1990–1999 seasons · Must have been on an active regular-season roster*

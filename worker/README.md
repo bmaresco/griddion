@@ -14,7 +14,7 @@ uncommented, and `npx wrangler deploy` is run.
 
 | Field | Rule |
 |---|---|
-| `drive` | integer, 1 to today's Drive # + 1 (ET rollover; +1 covers a page left open past midnight) |
+| `drive` | integer, 1 to (days since the original launch + 1) + 1. An upper bound: real drive numbers come from `schedule.json` and only lag that count after a relaunch shift; +1 covers a page left open past midnight ET |
 | `rating` | integer 1–5 |
 | `message` | optional string, ≤ 500 characters after trimming; blank → stored as NULL |
 | `device` | `"mobile"` or `"desktop"` |

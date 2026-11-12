@@ -5,6 +5,10 @@
     uv run publish build --drive 3       # one drive
     uv run publish diff                  # weekly refresh diff report vs the last published public/
     uv run publish schedule --launch 2026-11-09   # (re)write the schedule from the prompt queue
+    uv run publish shift --date 2026-12-01        # relaunch: Drive 3 on that date, 4-14 daily after it
+
+Drive numbers and dates come from prompts/schedule.json (each drive has an explicit date), not
+from days since launch: a shift leaves gaps (Drive 2 on Nov 10, Drive 3 on the relaunch date).
 
 Frozen drives (§6): a drive is frozen once it goes live (00:00 ET on its date), and every drive
 up to `frozen_through` in prompts/schedule.json is frozen too. Frozen drives are never rebuilt:
@@ -77,31 +81,86 @@ def is_frozen(drive: dict, sched: dict, today: dt.date | None = None, unfreeze: 
     return dt.date.fromisoformat(drive["date"]) <= today and drive["drive"] not in (unfreeze or set())
 
 
-def drive_number(day: dt.date, launch: dt.date) -> int:
-    """§9: Drive # = days since launch, the same for everyone. Launch day is Drive #1."""
-    return (day - launch).days + 1
+def drive_on(day: dt.date, sched: dict) -> dict | None:
+    """§9: the drive scheduled for an ET date (explicit dates in the schedule), or None on a day
+    with no drive (e.g. between Drive 2 and a relaunch)."""
+    return next((d for d in sched["drives"] if d["date"] == day.isoformat()), None)
 
 
-def write_schedule(launch: dt.date, queue: Path = QUEUE) -> dict:
-    """One drive per queue day, in order: Day d of the queue -> Drive #d on launch + d - 1."""
+def _check_dates(sched: dict) -> None:
+    """Drive numbers ascend with strictly increasing dates (gaps allowed, never two on a day)."""
+    ds = sorted(sched["drives"], key=lambda d: d["drive"])
+    for a, b in zip(ds, ds[1:]):
+        if b["date"] <= a["date"]:
+            sys.exit(f"drive {b['drive']} ({b['date']}) is not after drive {a['drive']} ({a['date']})")
+
+
+def write_schedule(launch: dt.date | None, queue: Path = QUEUE) -> dict:
+    """One drive per queue day, in order (Day d of the queue -> Drive #d). Dates: a drive already
+    in the schedule keeps its date (so a `shift` is never undone); new drives go on the days after
+    the last scheduled one. `launch` sets the dates only when there is no schedule yet."""
     days: dict[int, list[str]] = {}
     for line in queue.read_text().splitlines():
         if line.strip() and not line.startswith("#"):
             p = json.loads(line)
             days.setdefault(int(p["day"]), []).append(p["id"])
-    sched = {"launch_date": launch.isoformat(), "rollover": ROLLOVER, "queue": str(queue.relative_to(ROOT)),
-             "drives": [{"drive": d, "date": (launch + dt.timedelta(days=d - 1)).isoformat(), "prompt_ids": ids}
-                        for d, ids in sorted(days.items())]}
-    if SCHEDULE.exists():  # §6: never move or change a frozen drive
-        old = json.loads(SCHEDULE.read_text())
+    old = json.loads(SCHEDULE.read_text()) if SCHEDULE.exists() else None
+    dates = {d["drive"]: d["date"] for d in old["drives"]} if old else {}
+    if not dates and launch is None:
+        sys.exit("no schedule yet: give --launch YYYY-MM-DD")
+    drives, last = [], None
+    for d, ids in sorted(days.items()):
+        if d in dates:
+            date = dates[d]
+        elif last is not None:
+            date = (dt.date.fromisoformat(last) + dt.timedelta(days=1)).isoformat()
+        else:
+            date = (launch + dt.timedelta(days=d - 1)).isoformat()
+        drives.append({"drive": d, "date": date, "prompt_ids": ids})
+        last = date
+    sched = {"launch_date": old["launch_date"] if old else launch.isoformat(), "rollover": ROLLOVER,
+             "queue": str(queue.relative_to(ROOT)), "drives": drives}
+    if old:  # §6: never move or change a frozen drive
         if "frozen_through" in old:
             sched["frozen_through"] = old["frozen_through"]
         new = {d["drive"]: d for d in sched["drives"]}
         for d in old["drives"]:
             if is_frozen(d, old) and new.get(d["drive"]) != d:
                 sys.exit(f"drive {d['drive']} is frozen (§6); the new schedule would change it")
+    _check_dates(sched)
     SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
     return sched
+
+
+def shift_schedule(new_date: dt.date, first: int = 3, today: dt.date | None = None,
+                   never_deployed: bool = False) -> tuple[dict, list[tuple[int, str, str]]]:
+    """Relaunch: drive `first` goes on `new_date`, every later drive on the following days.
+    Earlier drives keep their dates. Refuses to move a drive at or before `frozen_through`, a date
+    that isn't after today (ET) or after the previous drive, and, unless `never_deployed`, any
+    drive whose current date has already come (it may have gone live: §6 never moves a live drive).
+    -> (schedule written, [(drive, old date, new date)])."""
+    today = today or today_et()
+    sched = load_schedule()
+    ft = int(sched.get("frozen_through", 0))
+    if first <= ft:
+        sys.exit(f"drive {first} is at or before frozen_through ({ft}): frozen drives never move (§6)")
+    if new_date <= today:
+        sys.exit(f"{new_date} is not after today ({today} ET): a shifted drive must still be in the future")
+    moved = [d for d in sched["drives"] if d["drive"] >= first]
+    if not moved:
+        sys.exit(f"no drive {first} in the schedule")
+    past = [d["drive"] for d in moved if dt.date.fromisoformat(d["date"]) <= today]
+    if past and not never_deployed:
+        sys.exit(f"drive(s) {past} already reached their date, so they may have gone live. If they were never "
+                 "deployed, rerun with --never-deployed (frozen drives never move, §6)")
+    changes = []
+    for d in sorted(moved, key=lambda d: d["drive"]):
+        nd = (new_date + dt.timedelta(days=d["drive"] - first)).isoformat()
+        changes.append((d["drive"], d["date"], nd))
+        d["date"] = nd
+    _check_dates(sched)
+    SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
+    return sched, changes
 
 
 def load_schedule() -> dict:
@@ -516,12 +575,23 @@ def main(argv: list[str] | None = None) -> None:
     dfp = sub.add_parser("diff")
     dfp.add_argument("--out", type=Path)
     s = sub.add_parser("schedule")
-    s.add_argument("--launch", required=True, type=dt.date.fromisoformat)
+    s.add_argument("--launch", type=dt.date.fromisoformat, help="only when there is no schedule yet; "
+                   "drives already scheduled keep their dates")
+    sh = sub.add_parser("shift", help="relaunch: move drive --from (default 3) to --date, later drives daily")
+    sh.add_argument("--date", required=True, type=dt.date.fromisoformat)
+    sh.add_argument("--from", dest="first", type=int, default=3)
+    sh.add_argument("--never-deployed", action="store_true",
+                    help="allow moving drives whose date has come (only if they never went live)")
     args = ap.parse_args(argv)
     if args.cmd == "build":
         cmd_build(args.drive, args.force, set(args.unfreeze))
     elif args.cmd == "diff":
         cmd_diff(args.out)
+    elif args.cmd == "shift":
+        _, changes = shift_schedule(args.date, args.first, never_deployed=args.never_deployed)
+        for n, a, b in changes:
+            print(f"  drive {n}: {a} -> {b}")
+        print(f"wrote {SCHEDULE}. Next: `publish build` (rewrites public/schedule.json and the moved drives' files)")
     else:
         sched = write_schedule(args.launch)
         print(f"wrote {SCHEDULE}: {len(sched['drives'])} drives from {sched['launch_date']}")
