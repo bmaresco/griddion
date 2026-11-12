@@ -29,10 +29,6 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 86400000);
 }
 
-export function driveNumber(launch: string, t = now()): number {
-  return daysBetween(launch, todayET(t)) + 1;
-}
-
 /** Milliseconds until the next Eastern midnight. Steps forward to find the exact instant, so DST days work. */
 export function msUntilMidnightET(t = now()): number {
   const p = parts(t);

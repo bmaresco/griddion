@@ -19,8 +19,10 @@ function addDays(d: string, n: number): string {
 
 /**
  * Production builds ship only the drives that are live: date <= (build date in ET + 1 day).
- * The +1 covers the gap between midnight ET and the nightly 00:05 ET rebuild. Future answer
- * banks never reach the deployed site. Before launch the build date counts as the launch date. GRIDDION_BUILD_DATE=YYYY-MM-DD overrides the date (testing).
+ * The +1 means tomorrow's drive is already deployed when midnight ET arrives. Future answer
+ * banks never reach the deployed site. The first drive after the cutoff is announced as
+ * schedule.next = {drive, date} (no answer bank) so a gap day can count down to it.
+ * GRIDDION_BUILD_DATE=YYYY-MM-DD overrides the build date (testing).
  */
 function publishLiveDrives(): Plugin {
   return {
@@ -30,18 +32,20 @@ function publishLiveDrives(): Plugin {
       const out = resolve(HERE, 'dist');
       const buildDate = process.env.GRIDDION_BUILD_DATE || todayET();
       const schedule = JSON.parse(readFileSync(resolve(PUBLIC, 'schedule.json'), 'utf8'));
-      // Before launch, count from the launch date, so a pre-launch build ships Drives 1-2.
-      const cutoff = addDays(buildDate < schedule.launch_date ? schedule.launch_date : buildDate, 1);
-      const live = schedule.drives.filter((d: { date: string }) => d.date <= cutoff);
+      type Entry = { drive: number; date: string; file: string };
+      const cutoff = addDays(buildDate, 1);
+      const live = (schedule.drives as Entry[]).filter((d) => d.date <= cutoff);
+      const upcoming = (schedule.drives as Entry[]).filter((d) => d.date > cutoff).sort((a, b) => a.date.localeCompare(b.date))[0];
       for (const d of live) {
         mkdirSync(dirname(resolve(out, d.file)), { recursive: true });
         copyFileSync(resolve(PUBLIC, d.file), resolve(out, d.file));
       }
-      writeFileSync(resolve(out, 'schedule.json'), JSON.stringify({ ...schedule, drives: live }, null, 1));
+      const { next: _old, ...rest } = schedule;
+      writeFileSync(resolve(out, 'schedule.json'), JSON.stringify({ ...rest, drives: live, ...(upcoming ? { next: { drive: upcoming.drive, date: upcoming.date } } : {}) }, null, 1));
       for (const f of ['matching.json', 'game.json']) copyFileSync(resolve(PUBLIC, f), resolve(out, f));
       // Short cache on data so the nightly deploy is picked up promptly.
       writeFileSync(resolve(out, '_headers'), '/schedule.json\n  Cache-Control: no-cache\n/days/*\n  Cache-Control: no-cache\n/matching.json\n  Cache-Control: public, max-age=3600\n');
-      console.log(`griddion: build date ${buildDate} (ET) -> shipping drives ${live.map((d: { drive: number }) => d.drive).join(', ') || 'none'}`);
+      console.log(`griddion: build date ${buildDate} (ET) -> shipping drives ${live.map((d) => d.drive).join(', ') || 'none'}${upcoming ? `; next = Drive ${upcoming.drive} on ${upcoming.date}` : ''}`);
     },
   };
 }

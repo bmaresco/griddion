@@ -60,6 +60,13 @@ function todaysDrive(): number | null {
   const today = todayET();
   return schedule?.drives.find((d) => d.date === today)?.drive ?? null;
 }
+/** The first drive dated after today: from the drives list (dev ships them all; production includes
+ *  tomorrow's), else the build's `next` announcement. */
+function nextDrive(today: string): { drive: number; date: string } | null {
+  const later = schedule?.drives.filter((d) => d.date > today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (later) return { drive: later.drive, date: later.date };
+  return schedule?.next && schedule.next.date > today ? schedule.next : null;
+}
 function streakNow(): number { return displayStreak(publishedDrives(), todaysDrive()); }
 /** The published drive just before `drive`, or null. */
 function prevDrive(drive: number): number | null {
@@ -154,21 +161,31 @@ function messageScreen(title: string, sub: string, card: string, opts: { blink?:
   if (opts.onButton) document.getElementById('msgbtn')?.addEventListener('click', opts.onButton);
 }
 
-function countdownScreen(launch: string) {
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const shortDate = (d: string) => `${MONTHS[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
+const longDate = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+
+/** Count down to the next drive (first launch, or the next drive after a day with none). */
+function countdownScreen(next: { drive: number; date: string }) {
   stopTimer();
+  const days = daysBetween(todayET(), next.date);
   const left = () => {
-    const ms = msUntilMidnightET() + Math.max(0, daysBetween(todayET(), launch) - 1) * 86400000;
+    const ms = msUntilMidnightET() + Math.max(0, daysBetween(todayET(), next.date) - 1) * 86400000;
     const s = Math.ceil(ms / 1000);
     return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
-  const screen = `<div class="screen center dot"><p class="s16 dim">KICKOFF AT MIDNIGHT</p><p class="s48" id="cd" aria-live="off">${left()}</p><p class="s16" style="color:#6fb4ff">DRIVE #1 · 12:00 AM ET</p><div class="grow"></div></div>`;
-  const body = `<p class="copy">Griddion kicks off at midnight Eastern. Come back for Drive #1: seven plays, 25 seconds each, and rarer answers go deeper.</p>
+  const when = days <= 1 ? 'at midnight Eastern' : `at midnight Eastern on ${longDate(next.date)}`;
+  const screen = `<div class="screen center dot"><p class="s16 dim">${days <= 1 ? 'KICKOFF AT MIDNIGHT' : 'NEXT KICKOFF'}</p><p class="s48" id="cd" aria-live="off">${left()}</p><p class="s16" style="color:#6fb4ff">DRIVE #${next.drive} · ${shortDate(next.date)} · 12:00 AM ET</p><div class="grow"></div></div>`;
+  const copy = next.drive === 1
+    ? `Griddion kicks off ${when}. Come back for Drive #1: seven plays, 25 seconds each, and rarer answers go deeper.`
+    : `The offense is back in the film room. Drive #${next.drive} kicks off ${when}. Your streak is safe: days without a drive never count against it.`;
+  const body = `<p class="copy">${esc(copy)}</p>
     <p class="rule">ONE DRIVE A DAY · NEW DRIVE EVERY MIDNIGHT ET</p>`;
   mount(top(screen, '<span>BALL · OWN 25</span><span>PTS · 000</span>') +
     fieldBox({ kind: 'huddle', los: 25 }, 'Pixel football field. The offense waits in a huddle at its own 25-yard line before kickoff.') +
     wristband("COACH'S CALL", 'PREGAME', body));
   tick = window.setInterval(() => {
-    if (todayET() >= launch) { stopTimer(); boot(); return; }
+    if (todayET() >= next.date) { stopTimer(); boot(); return; }
     const el = document.getElementById('cd');
     if (el) el.textContent = left();
   }, 500);
@@ -671,12 +688,14 @@ window.matchMedia('(min-width: 1100px)').addEventListener('change', () => {
   render();
 });
 
+let mockApplied = false;
 async function boot() {
   stopTimer();
   preloadSound();
   fitWidth();
   const params = new URLSearchParams(location.search);
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !mockApplied) {
+    mockApplied = true; // once: later boots (midnight rollover) must not rewind the mocked clock
     const t = params.get('today'), n = params.get('now');
     if (n) setMockNow(new Date(n));
     else if (t) setMockNow(new Date(`${t}T12:00:00-05:00`));
@@ -695,14 +714,16 @@ async function boot() {
   }
   const today = todayET();
   scheduleRollover();
-  if (today < schedule.launch_date) return countdownScreen(schedule.launch_date);
   let entry = schedule.drives.find((d) => d.date === today);
   if (!entry) {
     // A stale schedule.json (CDN or browser cache) can miss a drive that was just deployed: refetch once, bypassing caches.
     try { schedule = await loadSchedule(true); entry = schedule.drives.find((d) => d.date === today); } catch (e) { console.warn(e); }
   }
   if (!entry) {
+    // No drive today (before launch, or a gap): count down to the next one if it's scheduled.
     day = null;
+    const next = nextDrive(today);
+    if (next) return countdownScreen(next);
     return messageScreen('NO DRIVE TODAY', 'CHECK BACK TOMORROW', 'The offense is off today. A new drive kicks off at midnight Eastern.');
   }
   try {

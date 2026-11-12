@@ -27,7 +27,7 @@ Stack: keep it small. Vite + TypeScript, no heavy framework (vanilla or Preact).
 
 - Read the daily answer bank export defined in CLAUDE.md §6, one file per day, produced by the step 7 publish flow.
 - Each answer carries: player id, display name, aliases/name variants, tier, context line, and the prompt's YKB Kid.
-- Drive # = days since launch date (ET). Day rolls over at midnight America/New_York. Launch date: **2026-11-08** (Drive #1 = today).
+- Drive # = the drive whose date is today in schedule.json (ET). Day rolls over at midnight America/New_York. `launch_date` is informational only; dates can have gaps (no drive that day), and the UI counts down to the next scheduled drive.
 - If the publish flow doesn't yet emit per-day files in a static-hostable form, add that first: `public/days/<drive#>.json`.
 
 ---

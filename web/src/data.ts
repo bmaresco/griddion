@@ -11,7 +11,13 @@ export interface Prompt {
   answer_count: number; ykb_kid: string; answers: Answer[];
 }
 export interface Day { format: number; drive: number; date: string; prompts: Prompt[] }
-export interface Schedule { format: number; launch_date: string; drives: { drive: number; date: string; file: string }[] }
+/** launch_date is informational only: drive numbers come from each entry's date. `next` (production builds)
+ *  announces the first drive not yet shipped, number and date only. */
+export interface Schedule {
+  format: number; launch_date: string;
+  drives: { drive: number; date: string; file: string }[];
+  next?: { drive: number; date: string };
+}
 
 export class HttpError extends Error { constructor(public status: number, path: string) { super(`${path}: HTTP ${status}`); } }
 
