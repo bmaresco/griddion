@@ -3,7 +3,9 @@
 // and never again once the player has sent feedback.
 import { now } from './clock';
 
-/** Where feedback is POSTed. The endpoint is being built; until then FEEDBACK_STUB logs instead. */
+/** Where feedback is POSTed: the Worker's POST /feedback (same origin). Body is exactly
+ *  { drive, rating 1–5, message ≤ 500, device } — unknown fields are rejected. 201 = ok, 400 = bad
+ *  payload, 429 = over 5/min. Built but not deployed yet: until then FEEDBACK_STUB logs instead. */
 export const FEEDBACK_URL = '/feedback';
 const FEEDBACK_STUB = true;
 
@@ -132,11 +134,11 @@ export function showFeedback(drive: number, device: 'mobile' | 'desktop'): void 
       if (FEEDBACK_STUB) console.info('[feedback stub] POST', FEEDBACK_URL, body);
       else {
         const res = await fetch(FEEDBACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!res.ok) throw new Error(String(res.status));
+        if (!res.ok) throw new Error(res.status === 429 ? 'Too many calls to the booth. Try again in a minute.' : '');
       }
-    } catch {
+    } catch (e) {
       delete send.dataset.busy;
-      err.textContent = 'Couldn’t reach the booth. Try again.';
+      err.textContent = (e as Error).message || 'Couldn’t reach the booth. Try again.';
       return;
     }
     writeState({ ...readState(), submitted: true });
