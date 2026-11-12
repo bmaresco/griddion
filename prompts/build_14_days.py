@@ -1,4 +1,6 @@
-"""Generate prompts_14_days.jsonl (filter JSON for probe) from prompts_14_days.md's table.
+"""Generate prompts_14_days.jsonl (filter JSON for probe); prompts_14_days.md is written from it.
+
+Slot plan of 2026-11-11 (end of file): Drives 3-14 get P3 college, P4 new stat types, P7 honors.
 
 Kept as code so the translation is reviewable: one tuple per prompt, in day/slot order.
 Revisions approved after the first probe: two-team prompts are "skill player" (RB/WR/TE) where
@@ -192,6 +194,82 @@ for i, day in enumerate(DAYS):
     text, lo = AWARD_TEXT[a]
     day[6] = (text, award(a, lo))
 assert replaced == len(COMEBACK_REPLACEMENTS)
+
+# ---------------------------------------------------------------------------------------------
+# Slot plan of 2026-11-11 (spec §6): the two-team slots are gone. Drives 1-2 stay frozen as
+# published; Drives 3-14 get P3 college, P4 new stat types, P7 honors. P1, P2, P5, P6 unchanged.
+# Every prompt below passed both publish rules in the probes (prompts/college_*.jsonl,
+# weekly_stat_probe.jsonl, honors_probe.jsonl). Rules applied: no school two days running (all 12
+# differ), at most one 250+-answer prompt per day across all slots (the fixed slots already have one
+# on Days 3, 5, 9, 11), P7 never the same type two days running.
+SINCE74 = "Since 1974 · Must have played in an NFL regular-season game"
+SINCE99 = "Since 1999 · Regular season"
+
+
+def college(school, pos):
+    a = "an" if pos in ("OL", "LB", "RB") else "a"
+    return (f"Name {a} {pos} who played college football at {school}",
+            ("trait", {"season_min": 1974, "college": school, "position": pos}, SINCE74))
+
+
+def weekly(text, key, stat_name, n, pos=None, pos_not=None, sub=SINCE99):
+    f = {"season_min": 1999, key: {"stat": stat_name, "min": n}}
+    if pos: f["position"] = pos
+    if pos_not: f["position_not"] = pos_not
+    return (text, ("trait", f, sub))
+
+
+def honor(text, filters, sub):
+    return (text, ("trait", filters, sub))
+
+
+P3 = {  # day -> college prompt
+    3: college("LSU", "DB"), 4: college("Florida", "WR"), 5: college("Penn State", "LB"),
+    6: college("Wisconsin", "OL"), 7: college("Oklahoma", "RB"), 8: college("Clemson", "DL"),
+    9: college("UCLA", "DB"), 10: college("USC", "WR"), 11: college("Georgia", "LB"),
+    12: college("Notre Dame", "OL"), 13: college("Auburn", "RB"), 14: college("Michigan", "LB"),
+}
+P4 = {  # day -> weekly stat prompt (250+ answers: Day 4 non-RB rushing TD 412, Day 13 DL INT 326)
+    3: weekly("Name a player with 3.5+ sacks in a game", "game_stat", "sacks", 3.5),
+    4: weekly("Name a non-running back with a rushing TD", "window_stat", "rushing_tds", 1, pos_not=["RB"],
+              sub="Since 1999 · QBs count · Fullbacks count as running backs"),
+    5: weekly("Name an RB with 800+ rushing yards in his rookie season", "rookie_stat", "rushing_yards", 800, pos="RB"),
+    6: weekly("Name a player with a 3+ interception game", "game_stat", "interceptions", 3),
+    7: weekly("Name a player with 200+ receiving yards in a game", "game_stat", "receiving_yards", 200),
+    8: weekly("Name a player with 7+ sacks in his rookie season", "rookie_stat", "sacks", 7),
+    9: weekly("Name a QB with 4+ passing TDs in a game", "game_stat", "passing_tds", 4, pos="QB"),
+    10: weekly("Name an RB with 100+ receiving yards in a game", "game_stat", "receiving_yards", 100, pos="RB"),
+    11: weekly("Name a non-QB who threw a TD pass", "window_stat", "passing_tds", 1, pos_not=["QB"]),
+    12: weekly("Name a player with 200+ rushing yards in a game", "game_stat", "rushing_yards", 200),
+    13: weekly("Name a defensive lineman with an interception", "window_stat", "interceptions", 1, pos="DL"),
+    14: weekly("Name a player with 4+ interceptions in his rookie season", "rookie_stat", "interceptions", 4),
+}
+AP1 = "AP first team, 2000–2025 seasons"
+P7 = {  # day -> honors prompt; types: AP · HOF · Pro Bowl · draft · All-Pro · Heisman · HOF · Pro Bowl · AP · All-Pro · SB MVP · draft
+    3: ("Name an AP Offensive Rookie of the Year", award("oroy", 1967)),
+    4: honor("Name a Hall of Fame defensive lineman", {"hall_of_fame": True, "position": "DL"},
+             "Pro Football Hall of Fame · inducted as a defensive lineman"),
+    5: honor("Name a Steelers Pro Bowler since 2000", {"pro_bowl": True, "team": "PIT", "season_min": 2000, "season_max": 2025},
+             "2000–2025 seasons · selected while with the Steelers"),
+    6: honor("Name a first-round QB drafted since 2000", {"draft": {"round": 1}, "position": "QB", "season_min": 2000},
+             "2000–2026 drafts · must have started a regular-season game"),
+    7: honor("Name a first-team All-Pro LB since 2000", {"all_pro": True, "position": "LB", "season_min": 2000, "season_max": 2025},
+             f"{AP1} · at LB"),
+    8: honor("Name a Heisman Trophy winner who played in the NFL", {"award": "heisman"},
+             "1935–2025 winners · must have played in an NFL regular-season game"),
+    9: honor("Name a Hall of Fame WR", {"hall_of_fame": True, "position": "WR"},
+             "Pro Football Hall of Fame · inducted as a receiver or end"),
+    10: honor("Name a Cowboys Pro Bowler since 2000", {"pro_bowl": True, "team": "DAL", "season_min": 2000, "season_max": 2025},
+              "2000–2025 seasons · selected while with the Cowboys"),
+    11: ("Name an AP Defensive Rookie of the Year", award("droy", 1967)),
+    12: honor("Name a first-team All-Pro DB since 2000", {"all_pro": True, "position": "DB", "season_min": 2000, "season_max": 2025},
+              f"{AP1} · at CB or S"),
+    13: honor("Name a Super Bowl MVP", {"award": "sb_mvp"}, "Super Bowl I–LX"),
+    14: honor("Name a #1 overall draft pick", {"draft": {"pick": 1}, "season_min": 1980},
+              "Since 1980 · must have played in an NFL regular-season game"),
+}
+for d in range(3, 15):
+    DAYS[d - 1][2], DAYS[d - 1][3], DAYS[d - 1][6] = P3[d], P4[d], P7[d]
 
 assert len(DAYS) == 14 and all(len(d) == 7 for d in DAYS)
 out = Path(__file__).with_suffix("").parent / "prompts_14_days.jsonl"

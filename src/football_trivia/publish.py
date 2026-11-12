@@ -66,11 +66,15 @@ def today_et() -> dt.date:
     return dt.datetime.now(ZoneInfo(ROLLOVER["timezone"])).date()
 
 
-def is_frozen(drive: dict, sched: dict, today: dt.date | None = None) -> bool:
+def is_frozen(drive: dict, sched: dict, today: dt.date | None = None, unfreeze: set[int] | None = None) -> bool:
     """§6: a drive is frozen once it goes live (00:00 ET on its date), or if it is at or before
-    the schedule's `frozen_through`. A frozen drive is never regenerated."""
+    the schedule's `frozen_through`. A frozen drive is never regenerated. `unfreeze` (one-off,
+    `publish build --unfreeze N`) lifts only the date rule, for a drive whose date has come but
+    which was never deployed; it can never lift `frozen_through`."""
     today = today or today_et()
-    return dt.date.fromisoformat(drive["date"]) <= today or drive["drive"] <= int(sched.get("frozen_through", 0))
+    if drive["drive"] <= int(sched.get("frozen_through", 0)):
+        return True
+    return dt.date.fromisoformat(drive["date"]) <= today and drive["drive"] not in (unfreeze or set())
 
 
 def drive_number(day: dt.date, launch: dt.date) -> int:
@@ -333,13 +337,13 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame,
     }, warnings
 
 
-def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame):
+def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame, unfreeze: set[int] | None = None):
     """Yield (drive, data, warnings) for every scheduled drive in order. YKB Kids are chosen
     with the §2 window rule, so earlier drives are always built first."""
     hist: dict[int, list[str]] = {}
     today = today_et()
     for d in sched["drives"]:
-        if is_frozen(d, sched, today):
+        if is_frozen(d, sched, today, unfreeze):
             # §6: frozen drives are read back as published, never rebuilt
             path = DIST / "days" / f"{d['drive']}.json"
             if not path.exists():
@@ -400,15 +404,18 @@ def write_static(con) -> None:
     }, ensure_ascii=False, separators=(",", ":")))
 
 
-def cmd_build(drive_filter: int | None, force: bool) -> None:
+def cmd_build(drive_filter: int | None, force: bool, unfreeze: set[int] | None = None) -> None:
     con = connect(read_only=True)
     sched = load_schedule()
+    for n in unfreeze or set():
+        if n <= int(sched.get("frozen_through", 0)):
+            sys.exit(f"drive {n} is at or before frozen_through ({sched['frozen_through']}): it can't be unfrozen (§6)")
     prompts = load_prompts(ROOT / sched["queue"])
     f_df = fame(con)
     (DIST / "days").mkdir(parents=True, exist_ok=True)
     write_static(con)
     index, stops = [], []
-    for d, data, warns in built_drives(con, sched, prompts, f_df):
+    for d, data, warns in built_drives(con, sched, prompts, f_df, unfreeze):
         if drive_filter and d["drive"] != drive_filter:
             continue
         if d.get("frozen"):  # §6: never rewritten, not even with --force
@@ -503,13 +510,16 @@ def main(argv: list[str] | None = None) -> None:
     b = sub.add_parser("build")
     b.add_argument("--drive", type=int)
     b.add_argument("--force", action="store_true", help="publish even with prompts under the minimum")
+    b.add_argument("--unfreeze", type=int, action="append", default=[], metavar="N",
+                   help="rebuild drive N although its date has come (only if it was never deployed; "
+                        "never past frozen_through)")
     dfp = sub.add_parser("diff")
     dfp.add_argument("--out", type=Path)
     s = sub.add_parser("schedule")
     s.add_argument("--launch", required=True, type=dt.date.fromisoformat)
     args = ap.parse_args(argv)
     if args.cmd == "build":
-        cmd_build(args.drive, args.force)
+        cmd_build(args.drive, args.force, set(args.unfreeze))
     elif args.cmd == "diff":
         cmd_diff(args.out)
     else:
