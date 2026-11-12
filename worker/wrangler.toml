@@ -1,13 +1,17 @@
 # Griddion API Worker (spec §9): same origin as the game on Cloudflare Pages.
-# NOT DEPLOYED. `npm run check` validates this config with `wrangler deploy --dry-run` (no upload).
+# Deployed 2026-11-11 (route griddion.io/feedback only). `npm run check` = typecheck + tests + dry run.
 name = "griddion-api"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
+workers_dev = false     # reachable only via the griddion.io route, no *.workers.dev URL
+preview_urls = false
 
-# Routes are commented out until launch of the backend, so nothing on griddion.io changes by accident.
-# routes = [
-#   { pattern = "griddion.io/feedback", zone_name = "griddion.io" },
-# ]
+# Exactly one path. No wildcard: "griddion.io/feedback" matches only /feedback (query strings
+# aside), never /feedback/x, /feedbackx or any other path, so the Pages site keeps everything else.
+# Add /log and /stats/* here as their own exact routes when answer logging ships.
+routes = [
+  { pattern = "griddion.io/feedback", zone_name = "griddion.io" },
+]
 
 [vars]
 LAUNCH_DATE = "2026-11-09"                                   # Drive #1 (spec §9)
@@ -16,7 +20,7 @@ ALLOWED_ORIGINS = "https://griddion.io,https://www.griddion.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "griddion"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"                  # from `wrangler d1 create griddion`
+database_id = "c1880ae5-160a-42fd-bd5c-23bd6181e99f"         # `wrangler d1 create griddion`, 2026-11-11
 migrations_dir = "migrations"
 
 # Per-client rate limit, counted at the edge (Workers Rate Limiting API). The key is a hash of the

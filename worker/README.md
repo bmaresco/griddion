@@ -1,8 +1,9 @@
 # Griddion API Worker
 
-Cloudflare Worker + D1 on the same origin as the game (spec §9). **Not deployed.** Nothing here
-runs on griddion.io until the database is created, the `routes` line in `wrangler.toml` is
-uncommented, and `npx wrangler deploy` is run.
+Cloudflare Worker + D1 on the same origin as the game (spec §9). **Live since 2026-11-11** on exactly
+one route, `griddion.io/feedback` (no wildcard: every other path, including `/feedback/x` and
+`/feedback?…`, is still served by Pages). No `*.workers.dev` URL. D1 database `griddion`
+(`c1880ae5-160a-42fd-bd5c-23bd6181e99f`). Deploying the Worker never touches the Pages site.
 
 ## Endpoint
 
@@ -27,15 +28,14 @@ Responses: `201 {"ok":true}` · `400 {"error": "..."}` (bad JSON, unknown field,
 user agent, cookie or other identifier. The rate limiter counts per client at the edge on a hash
 of the IP; that key is never written to D1 or logged.
 
-## One-time setup (when it's time to go live)
+## One-time setup (done 2026-11-11; kept for reference)
 
 ```sh
 cd worker && npm install
 npx wrangler login
-npx wrangler d1 create griddion             # paste the database_id into wrangler.toml
+npx wrangler d1 create griddion             # database_id goes in wrangler.toml
 npx wrangler d1 migrations apply griddion --remote
-# uncomment `routes` in wrangler.toml, then:
-npx wrangler deploy
+npx wrangler deploy                         # route + bindings from wrangler.toml
 ```
 
 ## Reading feedback in the Cloudflare dashboard

@@ -488,12 +488,12 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - Used for pick stats and for tuning the formula after launch (§1, §7).
 - **Hosting (decided):** the static game on **Cloudflare Pages** at griddion.io; logging on a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`; `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable briefly). Per-IP rate limiting at the Worker; IPs are not stored. Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy.
 
-**Player feedback** (added 2026-11-11; built in `worker/`, **not deployed**)
+**Player feedback** (added 2026-11-11; `worker/`, **live since 2026-11-11** on the single route `griddion.io/feedback`, D1 database `griddion`)
 - `POST /feedback` on the same Worker + D1: `{ "drive": int, "rating": 1–5, "message": optional string ≤ 500 chars, "device": "mobile" | "desktop" }` → `201 {"ok":true}`.
 - Stored in `feedback(id, created_at, drive, rating, message, device)`: `created_at` is server time (UTC). **No IPs, user agents or other personal data.**
 - Abuse limits: strict validation (unknown fields, wrong types, out-of-range values → 400; `drive` must be between 1 and today's Drive # + 1), JSON only (415), body ≤ 2 KB (413), Origin must be griddion.io when present (403), **5 requests / minute per client** (429, `Retry-After: 60`) via the Workers Rate Limiting API, keyed on a hash of the IP that is counted at the edge and never stored.
 - Reading it: `worker/README.md` (D1 console in the Cloudflare dashboard, example queries) and `worker/scripts/export-feedback.mjs` (CSV export, `npm run export:feedback`).
-- Go-live steps (create D1, apply `worker/migrations`, uncomment `routes`, `wrangler deploy`) are in the README. Answer logging (`POST /log`, `GET /stats/<prompt_id>`) goes in the same Worker.
+- Live checks 2026-11-11: valid POST 201 (row in D1, then deleted), bad payload 400, foreign Origin 403, GET 405; `/`, `/schedule.json`, `/days/1.json`, `/feedback/x`, `/feedbackx` still served by Pages. No `*.workers.dev` URL (`workers_dev = false`). The Worker deploys separately from Pages (`cd worker && npx wrangler deploy`). Answer logging (`POST /log`, `GET /stats/<prompt_id>`) goes in the same Worker.
 
 **Out (later):** accounts, unlimited mode, archive, leaderboards, themed packs.
 
