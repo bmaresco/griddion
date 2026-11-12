@@ -480,7 +480,7 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **TD before play 7:** all 7 plays are still played and scored. The ball stays in the end zone, the remaining plays show as running out the clock, and the result reads `TOUCHDOWN on P<n>`.
 
 **Drive, streak, record**
-- **Drive #** = the number `public/schedule.json` gives today's date, the same for everyone; the drive rolls over at **00:00 America/New_York**. Launch: 2026-11-09 = Drive #1, 2026-11-10 = Drive #2. **Relaunch (decided 2026-11-11, date to come):** `publish shift --date YYYY-MM-DD --never-deployed` puts Drive 3 on that date and Drives 4–14 on the days after; Drives 1–2 keep their dates, so there is a gap with no drive. Drive numbers were never "days since launch" after that. Streaks count consecutive **drive numbers**, so the gap doesn't break one.
+- **Drive #** = the number `public/schedule.json` gives today's date, the same for everyone; the drive rolls over at **00:00 America/New_York**. Launch: 2026-11-09 = Drive #1, 2026-11-10 = Drive #2. **Relaunch 2026-11-12:** `publish shift --date 2026-11-12 --never-deployed` (run 2026-11-11) put Drive 3 on Nov 12 and Drives 4–14 on Nov 13–23; Drives 1–2 keep Nov 9–10, so Nov 11 has no drive. Drive numbers were never "days since launch" after that. Streaks count consecutive **drive numbers**, so the gap doesn't break one.
 - **Streak** = consecutive days played. A separate **W–L record**. Both in local storage.
 
 **Anonymous answer logging**
