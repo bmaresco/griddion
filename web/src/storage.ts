@@ -39,19 +39,34 @@ export function save(): void {
 
 export function store(): Store { return mem; }
 
-/** Streak shown today: it's broken if the last completed drive is older than yesterday. */
-export function displayStreak(today: number): number {
-  return mem.stats.lastPlayed >= today - 1 ? mem.stats.streak : 0;
+// Streaks count consecutive *published* drives played, not calendar days: a day with no drive in
+// schedule.json never breaks a streak. `published` = drive numbers dated on or before today, in date order.
+
+/** Streak after finishing `drive`; `prev` is the published drive just before it (null if it's the first). */
+export function streakAfter(st: Stats, drive: number, prev: number | null): number {
+  if (st.lastPlayed === drive) return st.streak;
+  return prev !== null && st.lastPlayed === prev ? st.streak + 1 : 1;
 }
 
-export function recordFinish(drive: number, won: boolean): void {
+/** Streak to show now. Alive if the last drive played is today's drive, or the latest published drive
+ *  before today's (today's not played yet), or — on a day with no drive — the latest published drive. */
+export function streakShown(st: Stats, published: number[], todayDrive: number | null): number {
+  const i = st.lastPlayed ? published.indexOf(st.lastPlayed) : -1;
+  if (i < 0) return 0;
+  const behind = published.length - 1 - i; // published drives since the last one played
+  return behind <= (todayDrive !== null ? 1 : 0) ? st.streak : 0;
+}
+
+export function displayStreak(published: number[], todayDrive: number | null): number {
+  return streakShown(mem.stats, published, todayDrive);
+}
+
+export function recordFinish(drive: number, won: boolean, prev: number | null): void {
   const g = mem.game;
   if (!g || g.counted) return;
   const st = mem.stats;
-  if (st.lastPlayed !== drive) {
-    st.streak = st.lastPlayed === drive - 1 ? st.streak + 1 : 1;
-    st.lastPlayed = drive;
-  }
+  st.streak = streakAfter(st, drive, prev);
+  st.lastPlayed = drive;
   if (won) st.wins++; else st.losses++;
   g.counted = true;
   save();

@@ -1,13 +1,12 @@
-# Rebuild griddion.io just after midnight Eastern so the new day's drive file goes live.
-# The build only ships drives dated <= (today ET + 1), so future answers never deploy.
+# Rebuild griddion.io every 4 hours so each day's drive is live well before midnight Eastern.
+# The build only ships drives dated <= (today ET + 1), so tomorrow's drive goes up early and
+# future answers never deploy. GitHub's scheduled runs can start hours late, so there is no
+# time-of-day check: every run triggers the deploy hook.
 name: Nightly deploy
 
 on:
   schedule:
-    # GitHub cron is UTC. 00:05 America/New_York is 05:05 UTC (EST) or 04:05 UTC (EDT);
-    # run at both and let the step below act only when it's the 00:xx hour in New York.
-    - cron: '5 4 * * *'
-    - cron: '5 5 * * *'
+    - cron: '5 */4 * * *' # UTC: 00:05, 04:05, 08:05, 12:05, 16:05, 20:05
   workflow_dispatch: {}
 
 jobs:
@@ -18,10 +17,6 @@ jobs:
         env:
           HOOK: ${{ secrets.CF_PAGES_DEPLOY_HOOK }}
         run: |
-          hour=$(TZ=America/New_York date +%H)
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ "$hour" != "00" ] && [ "$hour" != "01" ]; then
-            echo "Not midnight in New York (hour $hour); skipping."; exit 0
-          fi
           if [ -z "$HOOK" ]; then echo "::error::CF_PAGES_DEPLOY_HOOK secret is not set"; exit 1; fi
           curl -fsS -X POST "$HOOK"
           echo "Deploy hook triggered at $(TZ=America/New_York date)."

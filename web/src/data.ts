@@ -13,14 +13,17 @@ export interface Prompt {
 export interface Day { format: number; drive: number; date: string; prompts: Prompt[] }
 export interface Schedule { format: number; launch_date: string; drives: { drive: number; date: string; file: string }[] }
 
-async function getJSON<T>(path: string): Promise<T> {
-  const r = await fetch(path, { cache: 'no-cache' });
-  if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+export class HttpError extends Error { constructor(public status: number, path: string) { super(`${path}: HTTP ${status}`); } }
+
+/** bust: add a unique query string and bypass the HTTP cache, for a stale CDN/browser copy. */
+async function getJSON<T>(path: string, bust = false): Promise<T> {
+  const r = await fetch(bust ? `${path}?v=${Date.now()}` : path, { cache: bust ? 'reload' : 'no-cache' });
+  if (!r.ok) throw new HttpError(r.status, path);
   return r.json() as Promise<T>;
 }
 
-export const loadSchedule = () => getJSON<Schedule>('/schedule.json');
-export const loadDay = (file: string) => getJSON<Day>('/' + file.replace(/^\//, ''));
+export const loadSchedule = (bust = false) => getJSON<Schedule>('/schedule.json', bust);
+export const loadDay = (file: string, bust = false) => getJSON<Day>('/' + file.replace(/^\//, ''), bust);
 
 export interface MatchData { cfg: MatchConfig; others: Others | null; nameById: Map<string, string> }
 

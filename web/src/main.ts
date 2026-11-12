@@ -5,7 +5,7 @@ import { preloadSound, unlockSound, sfx, isMuted, setMuted } from './sound';
 import { shouldShowFeedback, showFeedback, closeFeedback } from './feedback';
 import { now, setMockNow, todayET, msUntilMidnightET, daysBetween } from './clock';
 import { load, save, store, displayStreak, recordFinish } from './storage';
-import { loadSchedule, loadDay, loadMatchData, matcherFor, type Day, type Prompt, type Answer, type Schedule } from './data';
+import { loadSchedule, loadDay, loadMatchData, matcherFor, HttpError, type Day, type Prompt, type Answer, type Schedule } from './data';
 import { stadium, field, type FieldMode } from './field';
 import { normName } from './matching';
 
@@ -50,9 +50,26 @@ function stopTimer() { if (tick) { clearInterval(tick); tick = 0; } }
 
 // ---------------------------------------------------------------- shared chrome
 
+/** Published drives (dated today or earlier) in date order. */
+function publishedDrives(): number[] {
+  if (!schedule) return [];
+  const today = todayET();
+  return schedule.drives.filter((d) => d.date <= today).sort((a, b) => a.date.localeCompare(b.date)).map((d) => d.drive);
+}
+function todaysDrive(): number | null {
+  const today = todayET();
+  return schedule?.drives.find((d) => d.date === today)?.drive ?? null;
+}
+function streakNow(): number { return displayStreak(publishedDrives(), todaysDrive()); }
+/** The published drive just before `drive`, or null. */
+function prevDrive(drive: number): number | null {
+  const p = publishedDrives(), i = p.indexOf(drive);
+  return i > 0 ? p[i - 1] : null;
+}
+
 function header(): string {
   const st = store().stats;
-  return `<div class="hdr"><span class="silk logo">GRIDDION</span><span class="hdr-r"><span class="rec">STREAK ${displayStreak(driveNo)} · ${st.wins}W ${st.losses}L</span>${muteButton()}</span></div>`;
+  return `<div class="hdr"><span class="silk logo">GRIDDION</span><span class="hdr-r"><span class="rec">STREAK ${streakNow()} · ${st.wins}W ${st.losses}L</span>${muteButton()}</span></div>`;
 }
 
 // Pixel speaker icon (16×16 grid): waves when sound is on, an X when muted.
@@ -448,7 +465,7 @@ function advance() {
     g.phase = 'done';
     save();
     const td = driveState(g.plays).tdPlay !== null;
-    recordFinish(driveNo, td);
+    recordFinish(driveNo, td, prevDrive(driveNo));
     render();
     window.setTimeout(() => (td ? sfx.touchdown() : sfx.stalled()), 250);
   } else startPlay();
@@ -679,16 +696,26 @@ async function boot() {
   const today = todayET();
   scheduleRollover();
   if (today < schedule.launch_date) return countdownScreen(schedule.launch_date);
-  const entry = schedule.drives.find((d) => d.date === today);
+  let entry = schedule.drives.find((d) => d.date === today);
+  if (!entry) {
+    // A stale schedule.json (CDN or browser cache) can miss a drive that was just deployed: refetch once, bypassing caches.
+    try { schedule = await loadSchedule(true); entry = schedule.drives.find((d) => d.date === today); } catch (e) { console.warn(e); }
+  }
   if (!entry) {
     day = null;
     return messageScreen('NO DRIVE TODAY', 'CHECK BACK TOMORROW', 'The offense is off today. A new drive kicks off at midnight Eastern.');
   }
   try {
-    day = await loadDay(entry.file);
+    try {
+      day = await loadDay(entry.file);
+    } catch (e) {
+      console.warn(e, '- retrying without cache');
+      day = await loadDay(entry.file, true);
+    }
   } catch (e) {
     console.error(e);
     day = null;
+    if (e instanceof HttpError && e.status === 404) return messageScreen('NO DRIVE TODAY', 'CHECK BACK TOMORROW', 'The offense is off today. A new drive kicks off at midnight Eastern.');
     return messageScreen('TECHNICAL TIMEOUT', "COULDN'T LOAD THE DRIVE", 'Something went wrong loading today’s drive. Check your connection and try again.', { button: 'TRY AGAIN', onButton: () => location.reload() });
   }
   driveNo = entry.drive;
@@ -697,7 +724,7 @@ async function boot() {
     s.game = { drive: driveNo, plays: [], phase: 'intro', deadline: null, counted: false };
     save();
   }
-  if (s.game.phase === 'done') recordFinish(driveNo, driveState(s.game.plays).tdPlay !== null); // no-op if already counted
+  if (s.game.phase === 'done') recordFinish(driveNo, driveState(s.game.plays).tdPlay !== null, prevDrive(driveNo)); // no-op if already counted
   loadMatchData(); // start the big download while the intro shows
   render();
 }
