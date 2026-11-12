@@ -2,6 +2,7 @@
 import './styles.css';
 import { TIERS, LEGEND_ORDER, RULES, driveState, yardsOnPlay, ballSpot, clockText, shareText, playCell, MAX_POINTS, type PlayRecord, type Tier } from './game';
 import { preloadSound, unlockSound, sfx, isMuted, setMuted } from './sound';
+import { shouldShowFeedback, showFeedback, closeFeedback } from './feedback';
 import { now, setMockNow, todayET, msUntilMidnightET, daysBetween } from './clock';
 import { load, save, store, displayStreak, recordFinish } from './storage';
 import { loadSchedule, loadDay, loadMatchData, matcherFor, type Day, type Prompt, type Answer, type Schedule } from './data';
@@ -117,7 +118,10 @@ function legend(): string {
   }).join('')}</div>`;
 }
 
+let feedbackTimer = 0;
 function mount(html: string, cls = '') {
+  clearTimeout(feedbackTimer);
+  closeFeedback();
   $app.className = 'app ' + cls;
   $app.innerHTML = html;
   window.scrollTo(0, 0);
@@ -486,6 +490,12 @@ function recapScreen() {
         : 'Pixel football field. The drive stalled. The defense and the visiting sideline celebrate while your offense slumps.') +
     wristband('DRIVE CHART', meta, body, `color:${td ? '#198a4a' : '#c8352f'}`));
   document.getElementById('share')!.addEventListener('click', share);
+  // Feedback popup ~2 s after the recap appears, so the result lands first.
+  if (shouldShowFeedback(stats.wins + stats.losses)) {
+    feedbackTimer = window.setTimeout(() => {
+      if (view === 'game' && document.getElementById('share')) showFeedback(driveNo, isDesktop() ? 'desktop' : 'mobile');
+    }, 2000);
+  }
 }
 
 async function share() {
