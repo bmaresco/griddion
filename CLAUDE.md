@@ -39,6 +39,7 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 - **QBs** (team, era, or conference prompts): must have **started at least one regular-season game** in the qualifying context, for all eras. The prompt subtitle shows: *"QBs must have started a regular-season game."*
 - **All other positions**: must have **played in at least one regular-season game** in the context. Preseason and playoff-only appearances don't count.
 - **Trait prompts** (awards, stat thresholds, e.g. "won OROY and MVP," "1,500+ receiving yard season"): the trait alone qualifies the player.
+- **College prompts** (decided 2026-11-11, e.g. "Name a WR who played college football at Ohio State"): the player's **final college** must match, **and** he must meet the usual rule above: a regular-season start for QBs, a counted season (§3 roster status) for everyone else, at the listed position. **Since 1974 only:** nflverse has a college for ~99.6% of players with a 1974+ season and 0% for careers that ended earlier, so seasons before 1974 don't count, and the subtitle says so (`Since 1974 · Must have played in an NFL regular-season game`). **Final school only:** a player who transferred out (e.g. Ohio State → Kansas) counts for the school he finished at. **School + position only:** no "any player" college prompts (Miami (FL), any position: 345 answers, too bottom-heavy: 91% Hidden Gem + Sleeper on the stat thresholds).
 - **Position** is the player's listed position in the qualifying seasons (e.g. a gadget player counts as a QB only for seasons he started at QB).
 - Example: Andy Dalton (0 starts for PHI in 2026) is **not** a valid "Eagles QB" answer.
 
@@ -73,8 +74,12 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 |---|---|
 | **nflverse** (`nflreadpy`) | Rosters, games, season stats, player IDs/cross-refs, names; QB starts for GB and LAR 1999+ and as the cross-check elsewhere |
 | **Wikipedia** (CC BY-SA) | Awards (MVP, OPOY, DPOY, OROY, DROY), Pro Bowl / All-Pro, Hall of Fame |
+| **Wikipedia list pages** (CC BY-SA, `raw_ap_award_pages`) | The six AP award pages; **Super Bowl Most Valuable Player Award** (game year − 1 = season; 61 rows, co-MVPs in XII); **List of Heisman Trophy winners**; **List of Pro Football Hall of Fame inductees** (inducted as a player vs coach/contributor, and the position inducted at); **"{season} All-Pro Team"** pages 1968→ (AP first team with its position slot). Pro Bowl seasons come from infobox highlights (years listed on > 99.8% of lines) |
+| **nflverse draft picks** (1980+) | Draft filter: season, round, pick, position only. Its PFR-derived columns (AV, Pro Bowls, All-Pro, HOF) are **never used** (§4 PFR rule) |
 | **Wikipedia "List of [team] starting quarterbacks"** (CC BY-SA, all 32 franchises) | QB starts, **primary source for every season** (see §3). Cross-checked against nflverse; mismatches flagged |
 | **`data/team_alignment.csv`** (hand-maintained, reviewable) | League, conference and division per franchise-season, 1950→now, including the AFL 1960–69 |
+| **nflverse colleges** (draft picks 1980+, players table, rosters) | Final college per player (`player_college`). Priority: draft picks (college at the draft) > nflverse players `college_name` > latest roster row. Multi-school strings list the final school first; only that one is kept |
+| **`data/college_aliases.csv`** (hand-maintained, reviewable) | College name normalization after rules (`St.` → State, HTML entities, trailing "University"): LSU = Louisiana State, USC = Southern California, bare roster "Miami" = Miami (FL) (63 of 63 drafted players agree), … Draft vs roster agree for 99.8% of 4,828 players after normalization; the rest are real transfers, where draft wins |
 | **Wikimedia Pageviews API** | Player fame (pageviews, available from mid-2015 onward) |
 | **Wikidata** (CC0) | ID crosswalk only: Pro Football Reference ID → Wikipedia article |
 
@@ -118,6 +123,21 @@ Supported filter types (build as a reusable library):
 - `award` (one or more; "won X and Y")
 - `award_any` (two or more; "won X or Y": the union of winners, each award from its own AP start season). The prompt text must name every award and say "or" (`check_text.py`). Award prompts either way (§7 award group).
 - `stat_threshold` (e.g. receiving yards ≥ 1500 in a single season)
+- **Weekly stat filters** (added 2026-11-11; nflverse weekly player stats, regular season, **1999+**: `build_answers` clamps `season_min` to 1999 and `/probe` warns unless the text or subtitle says "1999", e.g. `Since 1999`):
+  - `rookie_stat` `{"stat", "min"}`: total in the player's **first NFL season** = his first counted season (§3: a game, or the roster rule), not nflverse's `rookie_season`, which is earlier for 1,536 players, mostly a practice-squad / IR / cut year with no game. Only 1999+ rookies can qualify. Known limit: a pre-2013 player who played with no recorded stat (Victor Cruz 2010: 3 special-teams games, nflverse has him on IR all season) gets his next season as his rookie year.
+  - `game_stat` `{"stat", "min", "games_min": 1}`: at least `games_min` regular-season games at or above `min`.
+  - `window_stat` `{"stat", "min"}`: total over `season_min`–`season_max` ≥ `min`.
+  - `position_not` (with these three only): exclude a group/code or list, e.g. `["RB"]` (the RB group includes FB).
+  - **Position is per stat row**: `position` / `position_not` test the player's listed position for **that team-season** (`player_team_seasons`), because the weekly row's own `position` is his current one (Cordarrelle Patterson shows "RB" for his 2013–20 WR seasons). So "a non-RB with a rushing TD" counts Patterson's WR-era TDs and Taysom Hill's QB and TE seasons, never Juszczyk (FB).
+  - **Coverage (checked 2026-11-11):** sacks (half sacks included) and INTs are present every season since 1999 (Strahan 2001 22.5, Allen 2011 22, Watt 2021 22.5, Reed 2004 9, Bailey 2006 10, Diggs 2021 11 all match). **Three games are missing entirely** from nflverse's weekly player stats: 1999 Wk 1 BAL@STL, 2000 Wk 3 SD@KC, 2000 Wk 6 BUF@MIA (e.g. Kevin Carter's 1999 total reads 15 vs the official 17). Rows with no player are uncredited team sacks and never answers.
+  - Weekly stat prompts are trait prompts (A = 1) in the **stat** threshold group (§7).
+- `college` (a school or list of schools: final college attended, §3). `build_answers` clamps `season_min` to **1974** and `/probe` warns if the text doesn't say "1974". College prompts are trait prompts (A = 1) in the **college** threshold group (§7)
+- **Honors filters** (added 2026-11-11, P7). Trait prompts (A = 1) in the **award** threshold group (§7). Each reads `position` itself:
+  - `hall_of_fame: true`: inducted **as a player** (the inductee list, not the HOF category, which also holds coaches who played: Bill Cowher was showing up as a HOF LB). `position` = the position(s) he was **inducted at** ("Defensive end/linebacker" counts for DL and LB), because roster data lists pre-modern two-way ends as DL (Don Hutson, Pete Pihos). `season_min`/`max`: played a counted season in the window. 335 inductees matched; Johnny Blood (1925–39) isn't (his nflverse name is "Johnny (Blood) McNally"). 11 old-timers whose article never linked in identity are matched by exact name among unlinked players.
+  - `all_pro: true`: **AP first team** only, from the season All-Pro Team pages (**1968+**: `build_answers` clamps and warns unless the text says 1968). `position` = the AP slot (edge rusher and flex: his listed group that season). Special teams, returners and long snappers never count for a position. Infobox "All-Pro" lines mix PFWA/Sporting News picks and special-teams selections without saying so (infobox: 62 All-Pro WRs since 2000; AP: 32), so they are kept only as `all_pro_*_infobox` rows for comparison.
+  - `pro_bowl: true`: Pro Bowl seasons from infobox years (NFL Europe, CFL, USFL, XFL, UFL, Arena and AAFC lines dropped). With `team`, the selection season's team = the team he played the most games for that season (`team` doesn't make it a team prompt).
+  - `award: "sb_mvp"` / `"heisman"`: from their list pages. **Heisman answers must have played an NFL regular-season game** (§3; QB-only prompts: a start). 78 of 91 winners did; the 11 who didn't are unmatched by design (Berwanger, Kinnick, Davis, Ward, Crouch, White, …).
+  - `draft: {"pick": n} | {"pick_max": n} | {"round": n}`: nflverse draft picks, **1980+** (clamp + warning unless the text says 1980). `season_min`/`max` are **draft years**, `position` is the **draft position**, and answers must have played a game (QB-only: a start).
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
 
@@ -156,6 +176,10 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
 | Stat | best qualifying season's stat · season | `1,871 yds · 2015` |
 | Award | season(s) won | `Won 2011` |
 | Award, either (`award_any`) | each award won · seasons | `MVP 2007, 2010 · OPOY 2007` |
+| Rookie stat | rookie total · season | `91 rec · 2014 (rookie)` |
+| Game stat | best game; with 2+ qualifying games, the count first | `4.5 sacks · Wk 12, 2019` / `9 games · best 7 TD · Wk 1, 2013` |
+| Window stat | total · seasons that contributed | `7 TD · 2016–22` |
+| College | teams in context · seasons (1974+) | `Bills · 2001` |
 
 - Seasons render as `2009–16` (single season `2008`; full years when the century changes, `1999–2004`). Counts are singular at 1 (`1 start`).
 - **Games are "complete"** for a stint when every counted season is 2013+ (snap counts), or 1999+ for QB/RB/WR/TE (stat rows track their appearances). Otherwise the line uses seasons.
@@ -171,7 +195,7 @@ Input: Step 1 output. Output: each answer with F, A, R, R′, and tier. Formula 
   "rollover": { "time": "00:00", "timezone": "America/New_York" },
   "drives": [ { "drive": 1, "date": "2026-11-09", "file": "days/1.json" }, … ] }
 ```
-The UI picks today's drive from **the current date in America/New_York** (everyone gets the new drive at midnight Eastern): `drive = (today_ET − launch_date).days + 1` (§9).
+The UI picks today's drive from **the current date in America/New_York** (everyone gets the new drive at midnight Eastern): **the entry whose `date` equals today (ET)**. Drive numbers come from this file, never from `launch_date` arithmetic (decided 2026-11-11, for the relaunch): dates can have gaps, e.g. Drive 2 on 2026-11-10 and Drive 3 on the relaunch date. A day with no entry has no drive. `launch_date` stays as Drive 1's date, informational only (§9).
 
 **`public/days/<drive#>.json`** — one drive: 7 prompts with their full answer banks.
 ```json
@@ -210,11 +234,28 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
 ```
 `all_player_names` (~2 MB raw, much smaller gzipped) lets the UI reject a real player who isn't valid for the prompt, and stop a typo from snapping to a valid answer when another real player is at least as close. Names are compared after normalization (lowercase, accents and punctuation removed, suffixes like Jr./III dropped, runs of initials joined: `Y. A.` → `ya`), exactly as `names.norm_name`.
 
+### Slot plan (decided 2026-11-11)
+The two-team slots are gone. Drives 1–2 stay frozen as published; Drives 3–14 get rebuilt on this plan once every slot is designed.
+
+| Slot | Prompt type | Threshold group |
+|---|---|---|
+| P1, P2 | team / division (unchanged) | other |
+| **P3** | **college**: school + position (`college`), "Since 1974" | college |
+| **P4** | **new stat types**: `rookie_stat`, `game_stat`, `window_stat` (+ `position_not`), "Since 1999" | stat |
+| P5 | era (unchanged) | other |
+| P6 | single-season stats (`stat_threshold`), as before | stat |
+| **P7** | **honors**: AP awards + `hall_of_fame`, `all_pro`, `pro_bowl`, Super Bowl MVP, Heisman, `draft` | award |
+
+- **Drives 3–14 rebuilt on this plan (2026-11-11)**, `prompts/build_14_days.py` (`P3`, `P4`, `P7` at the end). `frozen_through` is now **2**. Drive 3's date had come but it was never deployed, so it was rebuilt once with `publish build --unfreeze 3`: `--unfreeze N` lifts only the date rule, for a drive that never went out, and can never go past `frozen_through`. Picks: P3 = 12 different schools (LSU DB, Florida WR, Penn State LB, Wisconsin OL, Oklahoma RB, Clemson DL, UCLA DB, USC WR, Georgia LB, Notre Dame OL, Auburn RB, Michigan LB; of the 12 probed on 2026-11-11, Tennessee QB had 5 answers, Iowa TE 19, and Texas WR (29) and Nebraska RB (exactly 3 Sleepers) were skipped for margin). P4 = 12 of the 21 passing (no 2+ INT game: bottom-heavy; no near-duplicates such as 3.5+ and 4+ sacks). P7 = 2 AP awards (OROY, DROY) + 10 of the 19 honors prompts, never the same type two days running. At most one 250+-answer prompt per day across all slots (the fixed slots already have one on Days 3, 5, 9, 11; P4's two go on Days 4 and 13). All 84 prompts pass ≥ 25 answers and ≥ 3 Sleepers after the 14-day YKB window; no duplicates; every daily average ≤ 142.
+- **P4 pool** (`prompts/weekly_stat_probe.jsonl`, probed 2026-11-11, stat thresholds). 21 of 32 pass both publish rules: rookie WR 60+ rec, rookie RB 1,000+ and 800+ rush yds, rookie 7+ sacks, rookie 4+ INT, rookie TE 40+ rec, 3.5+ and 4+ sacks in a game, 2+ and 3+ INT game, 200+ rush yds game, 200+ and 150+ rec yds game, RB 100+ rec yds game, QB 4+ TD game, TE 3+ TD game, non-RB rushing TD (with and without QBs), non-QB TD pass, WR TD pass, DL with an INT. Failing: rookie WR 70+ rec / 900+ yds, rookie QB 20+ TD / 3,000+ yds, QB 5+ TD / 400+ yds / 100+ rush yds game, TE 150+ rec yds game, RB 150+ rec yds game, 4+ rush TD game, K 6+ FG game (famous pools with no Sleepers, or under 25).
+- **P7 pool** (`prompts/honors_probe.jsonl`, award thresholds). 19 of 23 pass. Failing: All-Pro TE since 2000 (12 answers), All-Pro WR since 2000 (32, 0 Sleepers), All-Pro WR since 1990 (2 Sleepers).
+
 ### Scheduling and publish flow
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
 - **`uv run publish build`** exports every scheduled drive to `public/`. It refuses to publish a drive with any prompt under 25 answers or with fewer than 3 Sleeper Picks besides the YKB Kid (`--force` overrides) and warns when a `ykb_kid` override isn't a valid answer.
-- **Frozen drives (decided 2026-11-08): a drive is frozen once it goes live (00:00 ET on its date). Never regenerate a live or past drive.** Drives up to `frozen_through` in `prompts/schedule.json` are frozen too, before their date (currently `1`: Drive 1 stays exactly as published). `publish build` and `publish diff` read frozen drives back from `public/days/<n>.json` and never rewrite them, even with `--force`; their YKB Kids still count for the 14-day window. `publish schedule` refuses to change a frozen drive. So a rule or threshold change reaches only unfrozen drives: Drive 1's AP MVP (d01-7) keeps the tiers from before award `F = s_pv`.
+- **Frozen drives (decided 2026-11-08): a drive is frozen once it goes live (00:00 ET on its date). Never regenerate a live or past drive.** Drives up to `frozen_through` in `prompts/schedule.json` are frozen too, before their date (currently `2`: Drives 1–2 stay exactly as published). `publish build --unfreeze N` (one-off) rebuilds a drive whose date has come but that was **never deployed**; it never lifts `frozen_through`. `publish build` and `publish diff` read frozen drives back from `public/days/<n>.json` and never rewrite them, even with `--force`; their YKB Kids still count for the 14-day window. `publish schedule` refuses to change a frozen drive. So a rule or threshold change reaches only unfrozen drives: Drive 1's AP MVP (d01-7) keeps the tiers from before award `F = s_pv`.
 - **AP Comeback Player of the Year is retired from the award rotation (decided 2026-11-08).** Its pool is 27 winners (1998–2025), too small to meet the ≥ 3-Sleeper rule under award `F = s_pv` (Drive 5: 1 Sleeper, Drive 10: 2). Don't schedule it; `check_text.py` flags it. Its two slots (D5.7, D10.7) went to the first two "either award" candidates that passed both publish rules, probed in this order: ROY (offense or defense) 119 answers · 4 · 22 · 40 · 52+YKB ✅ → **D5.7**; MVP or OPOY 69 · 6 · 25 · 31 · 6+YKB ✅ → **D10.7**; DPOY or DROY 93 · 3 · 19 · 29 · 41+YKB ✅ (unused); AFC / NFC DPOY winners (award-season team's conference) were not needed: the data exists, but the NFC side has only 18 winners (< 25). Comeback stays in the award calibration set: the frozen thresholds were computed with it, and changing the set would mean recalibrating.
+- **Relaunch / moving drives (2026-11-11):** each drive has an explicit date in `prompts/schedule.json`. `uv run publish shift --date YYYY-MM-DD [--from 3]` moves that drive to the date and every later drive to the days after, then `publish build` rewrites `public/schedule.json` and the moved drives' files. It refuses to move a drive at or before `frozen_through`, a date that isn't after today (ET), or a drive whose date has already come, unless `--never-deployed` (Drive 3 today: its old date 2026-11-11 passed but it never went live). The frozen-by-date check and `drive_on()` read these dates, so after a shift a moved drive is unfrozen again until its new date. `publish schedule` keeps every scheduled drive's date (only new queue days get new dates after the last one), so it never undoes a shift. The YKB 14-day window still counts drives (Drive 3 still can't repeat Drive 1–2's YKB Kids), which is stricter than counting calendar days.
 - **Weekly in season:** `uv run refresh` → `uv run publish diff` (writes `reports/diff_<date>.md`; review it) → `uv run publish build` → deploy.
 
 ### Checks between steps
@@ -324,12 +365,13 @@ Set once, objectively:
 
 4. **Freeze** the resulting R′ values and record them here.
 
-**Decision: thresholds per prompt group — award, stat, and other.** Steps 1–4 run separately for each group (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values.
+**Decision: thresholds per prompt group — award, stat, college (added 2026-11-11), and other.** Steps 1–4 run separately for each group (same 10/35/35/20 split, same equal per-prompt weighting), and each prompt is scored against its group's frozen values.
 
 | Group | Prompts | Calibration set |
 |---|---|---|
-| award | trait prompts with an `award` or `award_any` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
-| stat | trait prompts with a `stat_threshold` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
+| award | trait prompts with an `award` or `award_any` filter, or an honors filter (`hall_of_fame`, `all_pro`, `pro_bowl`, `draft`) | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
+| stat | trait prompts with a `stat_threshold`, `rookie_stat`, `game_stat` or `window_stat` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
+| college | trait prompts with a `college` filter | 8 school + position prompts with 40+ answers: Ohio State WR, LSU DB, Miami (FL) LB, Florida State DB, Penn State LB, Notre Dame OL, USC WR, Michigan DL |
 | other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
 
 Reasons:
@@ -345,6 +387,11 @@ Reasons:
 | other | 0.2754 | 0.0892 | 0.0324 | below 0.0324 |
 | award | 0.7155 | 0.4705 | 0.3270 | below 0.3270 |
 | stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
+| college | 0.3696 | 0.1587 | 0.0676 | below 0.0676 |
+
+- **Honors filters use the award group (decided 2026-11-11).** `hall_of_fame`, `all_pro`, `pro_bowl` and `draft` route to award (F = s_pv) like Super Bowl MVP and Heisman (which are `award` values). On 23 probes: award thresholds pass 19 (failures are pool size: All-Pro TE/WR); stat thresholds pass 5 (honors pools are famous, like award winners: Super Bowl MVP 13 · 27 · 9 · 0, #1 pick 6 · 26 · 14 · 0); calibrating the honors probes as their own group (0.6454 / 0.4246 / 0.2910) passes 18 and drops Super Bowl MVP and first-round QB below 3 Sleepers. So no new group; award's frozen values are unchanged.
+- **Weekly stat filters use the stat group (decided 2026-11-11).** On the 9 probe prompts with 25+ answers (`prompts/weekly_stat_probe.jsonl`), the stat thresholds give a pooled 10 / 30 / 34 / 26% (target 10 / 35 / 35 / 20), and calibrating those prompts alone would give 0.5487 / 0.2950 / 0.1741, within ~0.02 of the stat values. Failures come from the pool (famous QBs: QB 5+ TD game 9 · 38 · 9 · 0), not the scale, so no new group.
+- **College group added 2026-11-11** (`--groups college`; the other groups keep their values). College pools are every player from a school at a position, with no production bar, so they run deeper than stat pools (stat qualifiers all had a big season): on the stat thresholds Miami (FL) any position came out 7 · 22 · 42 · 273 and LSU DB 2 · 5 · 13 · 48; on "other" (A = 1 inflates R) Ohio State WR got 0 Sleepers. Calibration set: 8 prompts / 463 answers, same 10/35/35/20 split, equal per-prompt weighting; Alabama RB and Georgia RB (39 each) missed the 40-answer bar. Spread (Starter · Backup · Hidden Gem · Sleeper + YKB Kid): Ohio State WR 7 · 22 · 17 · 3 + Reggie Germany, LSU DB 6 · 19 · 22 · 21 + Anthony Marshall, Miami (FL) LB 5 · 19 · 20 · 9 + Spencer Adkins, Florida State DB 5 · 21 · 17 · 11 + Walt Sumner, Penn State LB 7 · 22 · 30 · 17 + Glenn Carson, Notre Dame OL 5 · 22 · 22 · 17 + Mike Brennan, USC WR 6 · 17 · 15 · 11 + Will Buchanon, Michigan DL 4 · 16 · 18 · 2 + Kerwin Waldroup (fails the ≥ 3 Sleeper rule; don't ship as is).
 
 - **Award recalibrated 2026-11-08** for award `F = s_pv` (above): same 6 prompts / 284 answers, same 10/35/35/20 split, equal per-prompt weighting. Was 0.6832 / 0.4495 / 0.2993. With the old F, today's data reproduces the old award values exactly, so the whole shift comes from the F change. Only the award group was refrozen (`--groups award`): rerunning other on today's data gives slightly different values (1,621 answers; Backup 0.0900), from data refreshes since the freeze rather than any rule change, so other and stat keep their recorded values.
 - Award calibration spread after the change (Starter · Backup · Hidden Gem · Sleeper): MVP 6 · 18 · 23 · 4, DPOY 3 · 16 · 15 · 9, OROY 4 · 17 · 19 · 19, OPOY 5 · 18 · 19 · 2, DROY 2 · 14 · 15 · 29, Comeback 5 · 12 · 8 · 2.
@@ -433,13 +480,20 @@ Also supports **batch mode** (a file of draft questions → one summary table).
 - **TD before play 7:** all 7 plays are still played and scored. The ball stays in the end zone, the remaining plays show as running out the clock, and the result reads `TOUCHDOWN on P<n>`.
 
 **Drive, streak, record**
-- **Drive #** = days since launch, the same for everyone. **Launch: 2026-11-09 = Drive #1**; the drive rolls over at **00:00 America/New_York** (`(today_ET − launch_date).days + 1`).
+- **Drive #** = the number `public/schedule.json` gives today's date, the same for everyone; the drive rolls over at **00:00 America/New_York**. Launch: 2026-11-09 = Drive #1, 2026-11-10 = Drive #2. **Relaunch 2026-11-12:** `publish shift --date 2026-11-12 --never-deployed` (run 2026-11-11) put Drive 3 on Nov 12 and Drives 4–14 on Nov 13–23; Drives 1–2 keep Nov 9–10, so Nov 11 has no drive. Drive numbers were never "days since launch" after that. Streaks count consecutive **drive numbers**, so the gap doesn't break one.
 - **Streak** = consecutive days played. A separate **W–L record**. Both in local storage.
 
 **Anonymous answer logging**
 - For every submitted answer, record **prompt id**, **matched player id** (or `invalid`), and **tier**. Nothing else: no accounts, no personal data, no device or user identifiers.
 - Used for pick stats and for tuning the formula after launch (§1, §7).
 - **Hosting (decided):** the static game on **Cloudflare Pages** at griddion.io; logging on a **Cloudflare Worker + D1** (managed SQLite) on the same domain. One table `answers(prompt_id, player_id, tier, day)`; `POST /log` writes a row, `GET /stats/<prompt_id>` returns per-player counts for pick stats (cacheable briefly). Per-IP rate limiting at the Worker; IPs are not stored. Why: no server to run, free tier covers launch traffic, same origin as the game (no CORS or third-party scripts), and SQL makes post-launch tuning queries easy.
+
+**Player feedback** (added 2026-11-11; `worker/`, **live since 2026-11-11** on the single route `griddion.io/feedback`, D1 database `griddion`)
+- `POST /feedback` on the same Worker + D1: `{ "drive": int, "rating": 1–5, "message": optional string ≤ 500 chars, "device": "mobile" | "desktop" }` → `201 {"ok":true}`.
+- Stored in `feedback(id, created_at, drive, rating, message, device)`: `created_at` is server time (UTC). **No IPs, user agents or other personal data.**
+- Abuse limits: strict validation (unknown fields, wrong types, out-of-range values → 400; `drive` must be between 1 and today's Drive # + 1), JSON only (415), body ≤ 2 KB (413), Origin must be griddion.io when present (403), **5 requests / minute per client** (429, `Retry-After: 60`) via the Workers Rate Limiting API, keyed on a hash of the IP that is counted at the edge and never stored.
+- Reading it: `worker/README.md` (D1 console in the Cloudflare dashboard, example queries) and `worker/scripts/export-feedback.mjs` (CSV export, `npm run export:feedback`).
+- Live checks 2026-11-11: valid POST 201 (row in D1, then deleted), bad payload 400, foreign Origin 403, GET 405; `/`, `/schedule.json`, `/days/1.json`, `/feedback/x`, `/feedbackx` still served by Pages. No `*.workers.dev` URL (`workers_dev = false`). The Worker deploys separately from Pages (`cd worker && npx wrangler deploy`). Answer logging (`POST /log`, `GET /stats/<prompt_id>`) goes in the same Worker.
 
 **Out (later):** accounts, unlimited mode, archive, leaderboards, themed packs.
 

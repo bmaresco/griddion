@@ -11,7 +11,7 @@ import math
 
 import polars as pl
 
-from .answers import AWARD_KEYS, Prompt, Result, _as_list, _context_where
+from .answers import AWARD_KEYS, HONOR_KEYS, Prompt, Result, _as_list, _context_where
 from .db import DATA_DIR
 
 # §7 Fame
@@ -175,11 +175,16 @@ def load_thresholds() -> dict | None:
 
 
 def threshold_kind(prompt: Prompt) -> str:
-    """§7: three threshold groups. Trait prompts (A = 1) sit on a different scale from the rest,
-    and award winners are a much more famous pool than stat qualifiers."""
+    """§7: four threshold groups. Trait prompts (A = 1) sit on a different scale from the rest,
+    award winners are a much more famous pool than stat qualifiers, and college pools (every
+    player from a school, no production bar) run deeper than either."""
     if not prompt.is_trait:
         return "other"
-    return "award" if AWARD_KEYS & prompt.filters.keys() else "stat"
+    if (AWARD_KEYS | HONOR_KEYS) & prompt.filters.keys():
+        # honors / draft prompts (2026-11-11): famous pools like award winners; on the award
+        # thresholds + F = s_pv all but one of 15 probes pass, on stat 8 fail (§7)
+        return "award"
+    return "college" if "college" in prompt.filters else "stat"
 
 
 def _tier_expr(kind: str) -> pl.Expr:

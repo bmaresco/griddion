@@ -1,0 +1,7 @@
+# College filter probe (2026-11-11). Not scheduled: not in any drive or the queue.
+{"id": "col-osu-wr", "type": "trait", "text": "Name a WR who played college football at Ohio State", "subtitle": "Since 1974 · Must have played in an NFL regular-season game", "filters": {"season_min": 1974, "college": "Ohio State", "position": "WR"}}
+{"id": "col-bama-rb", "type": "trait", "text": "Name an RB who played college football at Alabama", "subtitle": "Since 1974 · Must have played in an NFL regular-season game", "filters": {"season_min": 1974, "college": "Alabama", "position": "RB"}}
+{"id": "col-usc-qb", "type": "trait", "text": "Name a QB who played college football at USC", "subtitle": "Since 1974 · QBs must have started an NFL regular-season game", "filters": {"season_min": 1974, "college": "USC", "position": "QB"}}
+{"id": "col-miami-any", "type": "trait", "text": "Name a player who played college football at Miami (FL)", "subtitle": "Since 1974 · Must have played in an NFL regular-season game", "filters": {"season_min": 1974, "college": "Miami (FL)"}}
+{"id": "col-lsu-db", "type": "trait", "text": "Name a DB who played college football at LSU", "subtitle": "Since 1974 · Must have played in an NFL regular-season game", "filters": {"season_min": 1974, "college": "LSU", "position": "DB"}}
+{"id": "col-mich-te", "type": "trait", "text": "Name a TE who played college football at Michigan", "subtitle": "Since 1974 · Must have played in an NFL regular-season game", "filters": {"season_min": 1974, "college": "Michigan", "position": "TE"}}

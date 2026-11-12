@@ -9,7 +9,8 @@ TEAM = {"CLE": "Browns", "LV": "Raiders", "KC": "Chiefs", "NYJ": "Jets", "NE": "
         "DET": "Lions", "IND": "Colts", "ARI": "Cardinals", "LA": "Rams", "PIT": "Steelers", "MIN": "Vikings", "SEA": "Seahawks",
         "SF": "49ers", "LAC": "Chargers", "CIN": "Bengals", "TEN": "Titans", "ATL": "Falcons", "NO": "Saints", "CAR": "Panthers",
         "JAX": "Jaguars", "HOU": "Texans", "TB": "Buccaneers", "BAL": "Ravens"}
-POS_WORD = {"QB": "QB", "RB": "RB", "WR": "WR", "TE": "TE", "LB": "LB", "DB": "DB", "K": "kicker"}
+POS_WORD = {"QB": "QB", "RB": "RB", "WR": "WR", "TE": "TE", "LB": "LB", "DB": "DB", "K": "kicker",
+            "DL": "DL|defensive lineman", "OL": "OL|offensive lineman"}
 STAT_WORD = {"receiving_yards": "receiving yard", "rushing_yards": "rushing yard", "passing_yards": "passing yard",
              "sacks": "sack", "interceptions": "interception", "receptions": "reception", "rushing_tds": "rushing TD",
              "receiving_tds": "receiving TD", "passing_tds": "passing TD", "field_goals": "field goal"}
@@ -18,7 +19,8 @@ AWARD_ANY_WORD = {"mvp": r"\bMVP\b", "opoy": r"Offensive Player of the Year", "d
                   "oroy": r"Rookie of the Year.*offense|Offensive Rookie of the Year",
                   "droy": r"Rookie of the Year.*defense|Defensive Rookie of the Year"}
 AWARD_WORD = {"mvp": "MVP", "dpoy": "Defensive Player of the Year", "opoy": "Offensive Player of the Year",
-              "oroy": "Offensive Rookie of the Year", "droy": "Defensive Rookie of the Year", "comeback": "Comeback Player"}
+              "oroy": "Offensive Rookie of the Year", "droy": "Defensive Rookie of the Year", "comeback": "Comeback Player",
+              "sb_mvp": "Super Bowl MVP", "heisman": "Heisman"}
 
 
 def problems(p: dict) -> list[str]:
@@ -36,13 +38,14 @@ def problems(p: dict) -> list[str]:
         if sorted(pos) == ["RB", "TE", "WR"] and "skill player (RB/WR/TE)" not in text:
             out.append("filter is RB/WR/TE but text doesn't say 'skill player (RB/WR/TE)'")
     elif pos:
-        if not re.search(rf"\b{POS_WORD[pos]}\b", text):
+        if not re.search(rf"\b(?:{POS_WORD[pos]})\b", text):
             out.append(f"filter position {pos} not in text")
     elif "teams_all" in f and not re.search(r"\ba player\b", text):
         out.append("no position filter but text names a position")
-    for w in ("QB", "RB", "WR", "TE", "LB", "DB", "kicker", "skill player"):
+    named_out = [x.upper() for x in (f["position_not"] if isinstance(f.get("position_not"), list) else [f["position_not"]] if "position_not" in f else [])]
+    for w in ("QB", "RB", "WR", "TE", "LB", "DB", "DL", "OL", "kicker", "skill player"):
         if re.search(rf"\b{re.escape(w)}\b", text) and w not in str(pos) and not (w == "kicker" and pos == "K") \
-                and not (w == "skill player" and isinstance(pos, list)):
+                and not (w == "skill player" and isinstance(pos, list)) and w not in named_out:
             out.append(f"text says {w} but filter position is {pos}")
     lo, hi = f.get("season_min"), f.get("season_max")
     if m := re.search(r"(\d{4})s\b", text):
@@ -78,6 +81,51 @@ def problems(p: dict) -> list[str]:
                 out.append(f"award_any {a} not in text")
         if " or " not in text:
             out.append("award_any (either award) but text doesn't say 'or'")
+    # ---- college, weekly stat and honors filters (2026-11-11)
+    if c := f.get("college"):
+        for school in (c if isinstance(c, list) else [c]):
+            if school not in text:
+                out.append(f"college {school} not in text")
+        if "1974" not in text + sub:
+            out.append("college prompt must say 1974")
+    weekly = [k for k in ("rookie_stat", "game_stat", "window_stat") if k in f]
+    if weekly or "stat_threshold" in f:
+        if "1999" not in text + sub:
+            out.append("stat prompt must say 1999")
+    for k in weekly:
+        st = f[k]
+        n = f"{st['min']:,}".rstrip("0").rstrip(".") if isinstance(st["min"], float) else f"{st['min']:,}"
+        word = {"rushing_tds": "rushing TD", "passing_tds": "TD pass|passing TD", "receiving_tds": "TD catch",
+                "interceptions": "interception", "sacks": "sack", "receiving_yards": "receiving yard",
+                "rushing_yards": "rushing yard", "receptions": "reception", "passing_yards": "passing yard"}[st["stat"]]
+        if not re.search(word, text):
+            out.append(f"{k} stat {st['stat']} not described in text")
+        if st["min"] > 1 and f"{n}+" not in text:
+            out.append(f"{k} min {n}+ not in text")
+        if k == "rookie_stat" and "rookie" not in text:
+            out.append("rookie_stat but text doesn't say rookie")
+        if k == "game_stat" and "in a game" not in text and " game" not in text:
+            out.append("game_stat but text doesn't say game")
+    for x in named_out:
+        word = {"RB": "running back", "QB": "QB"}.get(x, x)
+        if not re.search(rf"non-{word}", text) and not re.search(rf"non-{x}", text):
+            out.append(f"position_not {x} but text doesn't say non-{word}")
+    if f.get("hall_of_fame") and "Hall of Fame" not in text:
+        out.append("hall_of_fame but text doesn't say Hall of Fame")
+    if f.get("all_pro") and not re.search(r"first-team All-Pro", text):
+        out.append("all_pro (AP first team) but text doesn't say first-team All-Pro")
+    if f.get("pro_bowl") and "Pro Bowl" not in text:
+        out.append("pro_bowl but text doesn't say Pro Bowl")
+    if (d := f.get("draft")):
+        if "pick" in d and d["pick"] == 1 and "#1 overall" not in text:
+            out.append("draft pick 1 but text doesn't say #1 overall")
+        if "round" in d and d["round"] == 1 and "first-round" not in text:
+            out.append("draft round 1 but text doesn't say first-round")
+        if (f.get("season_min") or 0) <= 1980 and "1980" not in text + sub:
+            out.append("draft prompt must say 1980")
+    if m := re.search(r"since (\d{4})", text):
+        if f.get("season_min") != int(m.group(1)):
+            out.append(f"text says since {m.group(1)} but season_min is {f.get('season_min')}")
     if "Comeback" in text or "comeback" in str(f.get("award", "")) + str(f.get("award_any", "")):
         out.append("AP Comeback is retired from the award rotation (§6)")
     return out

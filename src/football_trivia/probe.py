@@ -22,7 +22,7 @@ SAMPLE = 8
 
 def _describe(f: dict) -> str:
     parts = []
-    for k in ("team", "teams_all", "position", "conference", "division", "league", "award", "award_any"):  # lists join with +
+    for k in ("team", "teams_all", "position", "conference", "division", "league", "award", "award_any", "college", "position_not"):  # lists join with +
         if k in f:
             v = f[k]
             parts.append(f"{k}={'+'.join(v) if isinstance(v, list) else v}")
@@ -30,6 +30,18 @@ def _describe(f: dict) -> str:
         parts.append(f"seasons {f.get('season_min', '…')}–{f.get('season_max', 'now')}")
     if st := f.get("stat_threshold"):
         parts.append(f"{st['stat']} ≥ {st['min']} in a season")
+    if st := f.get("rookie_stat"):
+        parts.append(f"{st['stat']} ≥ {st['min']} in his rookie season")
+    if st := f.get("game_stat"):
+        parts.append(f"{st['stat']} ≥ {st['min']} in a game" + (f" ({st['games_min']}+ games)" if st.get("games_min", 1) > 1 else ""))
+    if st := f.get("window_stat"):
+        parts.append(f"{st['stat']} total ≥ {st['min']}")
+    for k, label in (("hall_of_fame", "Hall of Fame (inducted as a player)"), ("all_pro", "1st-team All-Pro"),
+                     ("pro_bowl", "Pro Bowl (team = main team that season)")):
+        if f.get(k):
+            parts.append(label)
+    if d := f.get("draft"):
+        parts.append("drafted " + ", ".join(f"{k}={v}" for k, v in d.items()))
     return ", ".join(parts)
 
 

@@ -5,6 +5,10 @@
     uv run publish build --drive 3       # one drive
     uv run publish diff                  # weekly refresh diff report vs the last published public/
     uv run publish schedule --launch 2026-11-09   # (re)write the schedule from the prompt queue
+    uv run publish shift --date 2026-12-01        # relaunch: Drive 3 on that date, 4-14 daily after it
+
+Drive numbers and dates come from prompts/schedule.json (each drive has an explicit date), not
+from days since launch: a shift leaves gaps (Drive 2 on Nov 10, Drive 3 on the relaunch date).
 
 Frozen drives (§6): a drive is frozen once it goes live (00:00 ET on its date), and every drive
 up to `frozen_through` in prompts/schedule.json is frozen too. Frozen drives are never rebuilt:
@@ -24,7 +28,8 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from .answers import MIN_ANSWERS, STATS, TIGHT_MARGIN, Prompt, _as_list, _context_where, build_answers
+from .answers import (HONOR_KEYS, MIN_ANSWERS, STATS, TIGHT_MARGIN, WEEKLY_STAT_KEYS, Prompt, _as_list, _context_where,
+                      build_answers, honor_qualifiers, weekly_stat_qualifiers)
 from .db import ROOT, connect
 from .matching import NAME_GROUPS, allowed_edits, bank_aliases
 from .scoring import TIERS, fame, load_thresholds, score_answers, threshold_kind
@@ -65,38 +70,97 @@ def today_et() -> dt.date:
     return dt.datetime.now(ZoneInfo(ROLLOVER["timezone"])).date()
 
 
-def is_frozen(drive: dict, sched: dict, today: dt.date | None = None) -> bool:
+def is_frozen(drive: dict, sched: dict, today: dt.date | None = None, unfreeze: set[int] | None = None) -> bool:
     """§6: a drive is frozen once it goes live (00:00 ET on its date), or if it is at or before
-    the schedule's `frozen_through`. A frozen drive is never regenerated."""
+    the schedule's `frozen_through`. A frozen drive is never regenerated. `unfreeze` (one-off,
+    `publish build --unfreeze N`) lifts only the date rule, for a drive whose date has come but
+    which was never deployed; it can never lift `frozen_through`."""
     today = today or today_et()
-    return dt.date.fromisoformat(drive["date"]) <= today or drive["drive"] <= int(sched.get("frozen_through", 0))
+    if drive["drive"] <= int(sched.get("frozen_through", 0)):
+        return True
+    return dt.date.fromisoformat(drive["date"]) <= today and drive["drive"] not in (unfreeze or set())
 
 
-def drive_number(day: dt.date, launch: dt.date) -> int:
-    """§9: Drive # = days since launch, the same for everyone. Launch day is Drive #1."""
-    return (day - launch).days + 1
+def drive_on(day: dt.date, sched: dict) -> dict | None:
+    """§9: the drive scheduled for an ET date (explicit dates in the schedule), or None on a day
+    with no drive (e.g. between Drive 2 and a relaunch)."""
+    return next((d for d in sched["drives"] if d["date"] == day.isoformat()), None)
 
 
-def write_schedule(launch: dt.date, queue: Path = QUEUE) -> dict:
-    """One drive per queue day, in order: Day d of the queue -> Drive #d on launch + d - 1."""
+def _check_dates(sched: dict) -> None:
+    """Drive numbers ascend with strictly increasing dates (gaps allowed, never two on a day)."""
+    ds = sorted(sched["drives"], key=lambda d: d["drive"])
+    for a, b in zip(ds, ds[1:]):
+        if b["date"] <= a["date"]:
+            sys.exit(f"drive {b['drive']} ({b['date']}) is not after drive {a['drive']} ({a['date']})")
+
+
+def write_schedule(launch: dt.date | None, queue: Path = QUEUE) -> dict:
+    """One drive per queue day, in order (Day d of the queue -> Drive #d). Dates: a drive already
+    in the schedule keeps its date (so a `shift` is never undone); new drives go on the days after
+    the last scheduled one. `launch` sets the dates only when there is no schedule yet."""
     days: dict[int, list[str]] = {}
     for line in queue.read_text().splitlines():
         if line.strip() and not line.startswith("#"):
             p = json.loads(line)
             days.setdefault(int(p["day"]), []).append(p["id"])
-    sched = {"launch_date": launch.isoformat(), "rollover": ROLLOVER, "queue": str(queue.relative_to(ROOT)),
-             "drives": [{"drive": d, "date": (launch + dt.timedelta(days=d - 1)).isoformat(), "prompt_ids": ids}
-                        for d, ids in sorted(days.items())]}
-    if SCHEDULE.exists():  # §6: never move or change a frozen drive
-        old = json.loads(SCHEDULE.read_text())
+    old = json.loads(SCHEDULE.read_text()) if SCHEDULE.exists() else None
+    dates = {d["drive"]: d["date"] for d in old["drives"]} if old else {}
+    if not dates and launch is None:
+        sys.exit("no schedule yet: give --launch YYYY-MM-DD")
+    drives, last = [], None
+    for d, ids in sorted(days.items()):
+        if d in dates:
+            date = dates[d]
+        elif last is not None:
+            date = (dt.date.fromisoformat(last) + dt.timedelta(days=1)).isoformat()
+        else:
+            date = (launch + dt.timedelta(days=d - 1)).isoformat()
+        drives.append({"drive": d, "date": date, "prompt_ids": ids})
+        last = date
+    sched = {"launch_date": old["launch_date"] if old else launch.isoformat(), "rollover": ROLLOVER,
+             "queue": str(queue.relative_to(ROOT)), "drives": drives}
+    if old:  # §6: never move or change a frozen drive
         if "frozen_through" in old:
             sched["frozen_through"] = old["frozen_through"]
         new = {d["drive"]: d for d in sched["drives"]}
         for d in old["drives"]:
             if is_frozen(d, old) and new.get(d["drive"]) != d:
                 sys.exit(f"drive {d['drive']} is frozen (§6); the new schedule would change it")
+    _check_dates(sched)
     SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
     return sched
+
+
+def shift_schedule(new_date: dt.date, first: int = 3, today: dt.date | None = None,
+                   never_deployed: bool = False) -> tuple[dict, list[tuple[int, str, str]]]:
+    """Relaunch: drive `first` goes on `new_date`, every later drive on the following days.
+    Earlier drives keep their dates. Refuses to move a drive at or before `frozen_through`, a date
+    that isn't after today (ET) or after the previous drive, and, unless `never_deployed`, any
+    drive whose current date has already come (it may have gone live: §6 never moves a live drive).
+    -> (schedule written, [(drive, old date, new date)])."""
+    today = today or today_et()
+    sched = load_schedule()
+    ft = int(sched.get("frozen_through", 0))
+    if first <= ft:
+        sys.exit(f"drive {first} is at or before frozen_through ({ft}): frozen drives never move (§6)")
+    if new_date <= today:
+        sys.exit(f"{new_date} is not after today ({today} ET): a shifted drive must still be in the future")
+    moved = [d for d in sched["drives"] if d["drive"] >= first]
+    if not moved:
+        sys.exit(f"no drive {first} in the schedule")
+    past = [d["drive"] for d in moved if dt.date.fromisoformat(d["date"]) <= today]
+    if past and not never_deployed:
+        sys.exit(f"drive(s) {past} already reached their date, so they may have gone live. If they were never "
+                 "deployed, rerun with --never-deployed (frozen drives never move, §6)")
+    changes = []
+    for d in sorted(moved, key=lambda d: d["drive"]):
+        nd = (new_date + dt.timedelta(days=d["drive"] - first)).isoformat()
+        changes.append((d["drive"], d["date"], nd))
+        d["date"] = nd
+    _check_dates(sched)
+    SCHEDULE.write_text(json.dumps(sched, indent=2) + "\n")
+    return sched, changes
 
 
 def load_schedule() -> dict:
@@ -125,6 +189,76 @@ def _games_complete(rows: pl.DataFrame) -> bool:
                for s, g in rows.select("season", "pos_group").iter_rows())
 
 
+def _fmt_stat(v) -> str:
+    v = float(v)
+    return f"{v:,.1f}".rstrip("0").rstrip(".") if v != int(v) else f"{int(v):,}"
+
+
+def _weekly_context(con, f: dict, ids: set[str]) -> dict[str, str]:
+    """§6 context lines for the weekly stat filters (first one present, in this order):
+    rookie_stat  "84 rec · 2014 (rookie)"
+    game_stat    "4.5 sacks · Wk 12, 2019"; 2+ games: "3 games · best 6 sacks · Wk 4, 2007"
+    window_stat  "7 TD · 2011–24" (seasons that contributed)"""
+    for key in ("rookie_stat", "game_stat", "window_stat"):
+        if key not in f:
+            continue
+        q = weekly_stat_qualifiers(con, f, key).filter(pl.col("player_id").is_in(list(ids)))
+        unit = STAT_UNIT[f[key]["stat"]]
+        out = {}
+        for r in q.iter_rows(named=True):
+            if key == "rookie_stat":
+                out[r["player_id"]] = f"{_fmt_stat(r['total'])} {unit} · {r['season']} (rookie)"
+            elif key == "game_stat":
+                best = f"{_fmt_stat(r['best'])} {unit} · Wk {r['best_week']}, {r['best_season']}"
+                out[r["player_id"]] = best if r["games"] == 1 else f"{r['games']} games · best {best}"
+            else:
+                out[r["player_id"]] = f"{_fmt_stat(r['total'])} {unit} · {_span(r['first_season'], r['last_season'])}"
+        return out
+    return {}
+
+
+def _roman(n: int) -> str:
+    out = ""
+    for v, r in ((50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
+        while n >= v:
+            out, n = out + r, n - v
+    return out
+
+
+def _seasons_list(seasons) -> str:
+    """[2012, 2013, 2014, 2016] -> "2012–14, 2016"."""
+    s, out, i = sorted(seasons), [], 0
+    while i < len(s):
+        j = i
+        while j + 1 < len(s) and s[j + 1] == s[j] + 1:
+            j += 1
+        out.append(_span(s[i], s[j]))
+        i = j + 1
+    return ", ".join(out)
+
+
+def _honor_context(con, f: dict, ids: set[str]) -> dict[str, str]:
+    """§6 context lines for the honors filters (first one present):
+    draft "#1 overall · 2009" / "Round 1, #12 · 2004" · all_pro "1st-team All-Pro 2010, 2012"
+    · pro_bowl "Pro Bowl 2004–06" · hall_of_fame "Class of 2010 · 1996–2009"."""
+    for key in ("draft", "all_pro", "pro_bowl", "hall_of_fame"):
+        if key not in f:
+            continue
+        q = honor_qualifiers(con, f, key).filter(pl.col("player_id").is_in(list(ids)))
+        out = {}
+        for r in q.iter_rows(named=True):
+            if key == "draft":
+                pick = "#1 overall" if r["pick"] == 1 else f"Round {r['round']}, #{r['pick']}"
+                out.setdefault(r["player_id"], f"{pick} · {r['season']}")
+            elif key == "hall_of_fame":
+                out[r["player_id"]] = f"Class of {r['class']} · {_span(r['first_season'], r['last_season'])}"
+            else:
+                label = "1st-team All-Pro" if key == "all_pro" else "Pro Bowl"
+                out[r["player_id"]] = f"{label} {_seasons_list(r['seasons'])}"
+        return out
+    return {}
+
+
 def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
     """§6 context line per answer, from Step 1 evidence."""
     f = prompt.filters
@@ -133,6 +267,15 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
         return {}
     con.register("_ids", pl.DataFrame({"player_id": ids}).to_arrow())
     try:
+        if HONOR_KEYS & f.keys():
+            return _honor_context(con, f, set(ids))
+        if "award" in f and [a.lower() for a in _as_list(f["award"])] in (["sb_mvp"], ["heisman"]):
+            a = _as_list(f["award"])[0].lower()
+            rows = con.execute("""SELECT player_id, list(DISTINCT season ORDER BY season) FROM player_awards
+                                  WHERE player_id IN (SELECT player_id FROM _ids) AND award = ? GROUP BY 1""", [a]).fetchall()
+            if a == "sb_mvp":  # season 1966 = Super Bowl I
+                return {pid: "Super Bowl " + ", ".join(_roman(x - 1965) for x in ss) for pid, ss in rows}
+            return {pid: "Heisman " + ", ".join(map(str, ss)) for pid, ss in rows}
         if "award" in f:
             awards = _as_list(f["award"])
             rows = con.execute(f"""
@@ -153,6 +296,8 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
                 parts.setdefault(pid, {})[a] = seasons
             return {pid: " · ".join(f"{AWARD_LABEL.get(a, a.upper())} {', '.join(map(str, d[a]))}"
                                     for a in awards if a in d) for pid, d in parts.items()}
+        if WEEKLY_STAT_KEYS & f.keys():
+            return _weekly_context(con, f, set(ids))
         if st := f.get("stat_threshold"):
             expr, unit = STATS[st["stat"]], STAT_UNIT[st["stat"]]
             rows = con.execute(f"""
@@ -251,13 +396,13 @@ def export_prompt(con, obj: dict, slot: int, f_df: pl.DataFrame,
     }, warnings
 
 
-def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame):
+def built_drives(con, sched: dict, prompts: dict[str, dict], f_df: pl.DataFrame, unfreeze: set[int] | None = None):
     """Yield (drive, data, warnings) for every scheduled drive in order. YKB Kids are chosen
     with the §2 window rule, so earlier drives are always built first."""
     hist: dict[int, list[str]] = {}
     today = today_et()
     for d in sched["drives"]:
-        if is_frozen(d, sched, today):
+        if is_frozen(d, sched, today, unfreeze):
             # §6: frozen drives are read back as published, never rebuilt
             path = DIST / "days" / f"{d['drive']}.json"
             if not path.exists():
@@ -318,15 +463,18 @@ def write_static(con) -> None:
     }, ensure_ascii=False, separators=(",", ":")))
 
 
-def cmd_build(drive_filter: int | None, force: bool) -> None:
+def cmd_build(drive_filter: int | None, force: bool, unfreeze: set[int] | None = None) -> None:
     con = connect(read_only=True)
     sched = load_schedule()
+    for n in unfreeze or set():
+        if n <= int(sched.get("frozen_through", 0)):
+            sys.exit(f"drive {n} is at or before frozen_through ({sched['frozen_through']}): it can't be unfrozen (§6)")
     prompts = load_prompts(ROOT / sched["queue"])
     f_df = fame(con)
     (DIST / "days").mkdir(parents=True, exist_ok=True)
     write_static(con)
     index, stops = [], []
-    for d, data, warns in built_drives(con, sched, prompts, f_df):
+    for d, data, warns in built_drives(con, sched, prompts, f_df, unfreeze):
         if drive_filter and d["drive"] != drive_filter:
             continue
         if d.get("frozen"):  # §6: never rewritten, not even with --force
@@ -421,15 +569,29 @@ def main(argv: list[str] | None = None) -> None:
     b = sub.add_parser("build")
     b.add_argument("--drive", type=int)
     b.add_argument("--force", action="store_true", help="publish even with prompts under the minimum")
+    b.add_argument("--unfreeze", type=int, action="append", default=[], metavar="N",
+                   help="rebuild drive N although its date has come (only if it was never deployed; "
+                        "never past frozen_through)")
     dfp = sub.add_parser("diff")
     dfp.add_argument("--out", type=Path)
     s = sub.add_parser("schedule")
-    s.add_argument("--launch", required=True, type=dt.date.fromisoformat)
+    s.add_argument("--launch", type=dt.date.fromisoformat, help="only when there is no schedule yet; "
+                   "drives already scheduled keep their dates")
+    sh = sub.add_parser("shift", help="relaunch: move drive --from (default 3) to --date, later drives daily")
+    sh.add_argument("--date", required=True, type=dt.date.fromisoformat)
+    sh.add_argument("--from", dest="first", type=int, default=3)
+    sh.add_argument("--never-deployed", action="store_true",
+                    help="allow moving drives whose date has come (only if they never went live)")
     args = ap.parse_args(argv)
     if args.cmd == "build":
-        cmd_build(args.drive, args.force)
+        cmd_build(args.drive, args.force, set(args.unfreeze))
     elif args.cmd == "diff":
         cmd_diff(args.out)
+    elif args.cmd == "shift":
+        _, changes = shift_schedule(args.date, args.first, never_deployed=args.never_deployed)
+        for n, a, b in changes:
+            print(f"  drive {n}: {a} -> {b}")
+        print(f"wrote {SCHEDULE}. Next: `publish build` (rewrites public/schedule.json and the moved drives' files)")
     else:
         sched = write_schedule(args.launch)
         print(f"wrote {SCHEDULE}: {len(sched['drives'])} drives from {sched['launch_date']}")

@@ -14,6 +14,11 @@
       "Starter": 0.5541830038235006,
       "Backup": 0.3113907667157771,
       "Hidden Gem": 0.19451602297845752
+    },
+    "college": {
+      "Starter": 0.3695661584129881,
+      "Backup": 0.15874181829876574,
+      "Hidden Gem": 0.06759264634061218
     }
   },
   "shares": [
@@ -26,10 +31,12 @@
   "pooled_answers": {
     "other": 1638,
     "award": 284,
-    "stat": 743
+    "stat": 743,
+    "college": 463
   },
   "frozen_at": "2026-11-08",
   "group_frozen_at": {
-    "award": "2026-11-08"
+    "award": "2026-11-08",
+    "college": "2026-11-11"
   }
 }
