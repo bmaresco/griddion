@@ -3,11 +3,13 @@
 // and never again once the player has sent feedback.
 import { now } from './clock';
 
-/** Where feedback is POSTed: the Worker's POST /feedback (same origin). Body is exactly
- *  { drive, rating 1–5, message ≤ 500, device } — unknown fields are rejected. 201 = ok, 400 = bad
- *  payload, 429 = over 5/min. Built but not deployed yet: until then FEEDBACK_STUB logs instead. */
+/** The Worker's POST /feedback, same origin. Exactly this path: a query string routes to Pages and fails.
+ *  Body is exactly { drive, rating 1–5, message? (≤ 500 characters, omitted when empty), device };
+ *  unknown fields are rejected. 201 = ok, 400 = bad payload, 429 = over 5/min. */
 export const FEEDBACK_URL = '/feedback';
-const FEEDBACK_STUB = true;
+/** Dev server only: localhost can't reach the Worker, so log instead of POSTing. Production always POSTs. */
+const FEEDBACK_STUB = import.meta.env.DEV;
+const MAX_CHARS = 500;
 
 const KEY = 'griddion:feedback';
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -129,17 +131,25 @@ export function showFeedback(drive: number, device: 'mobile' | 'desktop'): void 
     if (!rating || send.dataset.busy) return;
     send.dataset.busy = '1';
     err.textContent = '';
-    const body = { drive, rating, message: msg.value.trim().slice(0, 500), device };
-    try {
-      if (FEEDBACK_STUB) console.info('[feedback stub] POST', FEEDBACK_URL, body);
-      else {
-        const res = await fetch(FEEDBACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!res.ok) throw new Error(res.status === 429 ? 'Too many calls to the booth. Try again in a minute.' : '');
+    const text = [...msg.value.trim()].slice(0, MAX_CHARS).join(''); // characters (code points), not bytes or UTF-16 units
+    const body: { drive: number; rating: number; message?: string; device: 'mobile' | 'desktop' } = { drive, rating, device };
+    if (text) body.message = text;
+    // No automatic retries: one POST per tap.
+    const fail = (m: string) => { delete send.dataset.busy; err.textContent = m; };
+    if (FEEDBACK_STUB) console.info('[feedback stub] POST', FEEDBACK_URL, body);
+    else {
+      let res: Response;
+      try {
+        res = await fetch(FEEDBACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } catch {
+        return fail('Couldn’t send. Try again.');
       }
-    } catch (e) {
-      delete send.dataset.busy;
-      err.textContent = (e as Error).message || 'Couldn’t reach the booth. Try again.';
-      return;
+      if (res.status === 400) {
+        console.warn('feedback rejected (400):', await res.text().catch(() => ''));
+        return fail('Couldn’t send.');
+      }
+      if (res.status === 429) return fail('Too many tries, wait a minute.');
+      if (res.status !== 201) return fail('Couldn’t send. Try again.');
     }
     writeState({ ...readState(), submitted: true });
     el.querySelector<HTMLElement>('.fb-body')!.hidden = true;
