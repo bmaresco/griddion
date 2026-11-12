@@ -24,8 +24,8 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from .answers import (MIN_ANSWERS, STATS, TIGHT_MARGIN, WEEKLY_STAT_KEYS, Prompt, _as_list, _context_where,
-                      build_answers, weekly_stat_qualifiers)
+from .answers import (HONOR_KEYS, MIN_ANSWERS, STATS, TIGHT_MARGIN, WEEKLY_STAT_KEYS, Prompt, _as_list, _context_where,
+                      build_answers, honor_qualifiers, weekly_stat_qualifiers)
 from .db import ROOT, connect
 from .matching import NAME_GROUPS, allowed_edits, bank_aliases
 from .scoring import TIERS, fame, load_thresholds, score_answers, threshold_kind
@@ -154,6 +154,48 @@ def _weekly_context(con, f: dict, ids: set[str]) -> dict[str, str]:
     return {}
 
 
+def _roman(n: int) -> str:
+    out = ""
+    for v, r in ((50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
+        while n >= v:
+            out, n = out + r, n - v
+    return out
+
+
+def _seasons_list(seasons) -> str:
+    """[2012, 2013, 2014, 2016] -> "2012–14, 2016"."""
+    s, out, i = sorted(seasons), [], 0
+    while i < len(s):
+        j = i
+        while j + 1 < len(s) and s[j + 1] == s[j] + 1:
+            j += 1
+        out.append(_span(s[i], s[j]))
+        i = j + 1
+    return ", ".join(out)
+
+
+def _honor_context(con, f: dict, ids: set[str]) -> dict[str, str]:
+    """§6 context lines for the honors filters (first one present):
+    draft "#1 overall · 2009" / "Round 1, #12 · 2004" · all_pro "1st-team All-Pro 2010, 2012"
+    · pro_bowl "Pro Bowl 2004–06" · hall_of_fame "Class of 2010 · 1996–2009"."""
+    for key in ("draft", "all_pro", "pro_bowl", "hall_of_fame"):
+        if key not in f:
+            continue
+        q = honor_qualifiers(con, f, key).filter(pl.col("player_id").is_in(list(ids)))
+        out = {}
+        for r in q.iter_rows(named=True):
+            if key == "draft":
+                pick = "#1 overall" if r["pick"] == 1 else f"Round {r['round']}, #{r['pick']}"
+                out.setdefault(r["player_id"], f"{pick} · {r['season']}")
+            elif key == "hall_of_fame":
+                out[r["player_id"]] = f"Class of {r['class']} · {_span(r['first_season'], r['last_season'])}"
+            else:
+                label = "1st-team All-Pro" if key == "all_pro" else "Pro Bowl"
+                out[r["player_id"]] = f"{label} {_seasons_list(r['seasons'])}"
+        return out
+    return {}
+
+
 def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
     """§6 context line per answer, from Step 1 evidence."""
     f = prompt.filters
@@ -162,6 +204,15 @@ def context_lines(con, prompt: Prompt, scored: pl.DataFrame) -> dict[str, str]:
         return {}
     con.register("_ids", pl.DataFrame({"player_id": ids}).to_arrow())
     try:
+        if HONOR_KEYS & f.keys():
+            return _honor_context(con, f, set(ids))
+        if "award" in f and [a.lower() for a in _as_list(f["award"])] in (["sb_mvp"], ["heisman"]):
+            a = _as_list(f["award"])[0].lower()
+            rows = con.execute("""SELECT player_id, list(DISTINCT season ORDER BY season) FROM player_awards
+                                  WHERE player_id IN (SELECT player_id FROM _ids) AND award = ? GROUP BY 1""", [a]).fetchall()
+            if a == "sb_mvp":  # season 1966 = Super Bowl I
+                return {pid: "Super Bowl " + ", ".join(_roman(x - 1965) for x in ss) for pid, ss in rows}
+            return {pid: "Heisman " + ", ".join(map(str, ss)) for pid, ss in rows}
         if "award" in f:
             awards = _as_list(f["award"])
             rows = con.execute(f"""

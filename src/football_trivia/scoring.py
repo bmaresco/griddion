@@ -11,7 +11,7 @@ import math
 
 import polars as pl
 
-from .answers import AWARD_KEYS, Prompt, Result, _as_list, _context_where
+from .answers import AWARD_KEYS, HONOR_KEYS, Prompt, Result, _as_list, _context_where
 from .db import DATA_DIR
 
 # §7 Fame
@@ -180,7 +180,9 @@ def threshold_kind(prompt: Prompt) -> str:
     player from a school, no production bar) run deeper than either."""
     if not prompt.is_trait:
         return "other"
-    if AWARD_KEYS & prompt.filters.keys():
+    if (AWARD_KEYS | HONOR_KEYS) & prompt.filters.keys():
+        # honors / draft prompts (2026-11-11): famous pools like award winners; on the award
+        # thresholds + F = s_pv all but one of 15 probes pass, on stat 8 fail (§7)
         return "award"
     return "college" if "college" in prompt.filters else "stat"
 

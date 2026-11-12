@@ -36,6 +36,12 @@ def _describe(f: dict) -> str:
         parts.append(f"{st['stat']} ≥ {st['min']} in a game" + (f" ({st['games_min']}+ games)" if st.get("games_min", 1) > 1 else ""))
     if st := f.get("window_stat"):
         parts.append(f"{st['stat']} total ≥ {st['min']}")
+    for k, label in (("hall_of_fame", "Hall of Fame (inducted as a player)"), ("all_pro", "1st-team All-Pro"),
+                     ("pro_bowl", "Pro Bowl (team = main team that season)")):
+        if f.get(k):
+            parts.append(label)
+    if d := f.get("draft"):
+        parts.append("drafted " + ", ".join(f"{k}={v}" for k, v in d.items()))
     return ", ".join(parts)
 
 

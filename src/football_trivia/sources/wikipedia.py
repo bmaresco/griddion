@@ -115,6 +115,21 @@ def _years(line: str) -> list[int]:
     return years
 
 
+def _honor_years(line: str) -> list[int]:
+    """Like _years, also reading 2020−2023 (minus sign) and 1950–53 (two-digit end). Separate so
+    the honors counts behind F (parse_highlights) don't move."""
+    years: list[int] = []
+    for a, b in re.findall(r"\b((?:19|20)\d\d)\b(?:\s*[–—−-]\s*\b((?:19|20)?\d\d)\b)?", line):
+        a = int(a)
+        if b and len(b) == 2:
+            b = str(a // 100 * 100 + int(b))
+        if b and int(b) > a:
+            years.extend(range(a, int(b) + 1))
+        else:
+            years.append(a)
+    return list(dict.fromkeys(years))
+
+
 # (award key, required regex, forbidden regex). Lines are cleaned display text.
 # AP only (spec §5): lines naming another voting body are dropped for every award.
 NON_AP = r"PFWA|Pro Football Writers|UPI|United Press|Sporting News|NEA|Newspaper|Pro Football Weekly|Bert Bell|Kansas City Committee|Maxwell"
@@ -134,7 +149,31 @@ AWARD_RULES = [
 ]
 
 # first AP season per award (spec §5); earlier rows are other bodies' versions
-AP_FIRST_SEASON = {"mvp": 1957, "opoy": 1972, "dpoy": 1971, "oroy": 1967, "droy": 1967, "comeback": 1998}
+AP_FIRST_SEASON = {"mvp": 1957, "opoy": 1972, "dpoy": 1971, "oroy": 1967, "droy": 1967, "comeback": 1998,
+                   # not AP awards, but each has one list page that is the whole record (§5 honors)
+                   "sb_mvp": 1966, "heisman": 1935}
+
+
+def honor_seasons(text: str | None) -> list[tuple[str, int]]:
+    """Per-season Pro Bowl / All-Pro selections from infobox highlights (§5 honors filters):
+    [(honor, season)] with honor in pro_bowl, all_pro_1st, all_pro_2nd. Years are listed on
+    >99.8% of these lines; a line without years gives no seasons (its count still feeds
+    parse_highlights). AAFC "All-Pro" lines are skipped (AAFC seasons never count, §5)."""
+    out: list[tuple[str, int]] = []
+    if not text:
+        return out
+    for raw in clean_wikitext(text).splitlines():
+        line = raw.lstrip("*;: ").strip()
+        if not line or re.search(r"\bAAFC\b|Europe|World League|\bCFL\b|Canadian|\bUSFL\b|\bXFL\b|\bUFL\b|Arena", line):
+            continue
+        if re.search(r"\bPro Bowl\b", line) and not re.search(r"\bPro Bowl (MVP|Most Valuable)", line):
+            honor = "pro_bowl"
+        elif re.search(r"\bAll-Pro\b", line) and not re.search(r"Rookie", line):
+            honor = "all_pro_2nd" if re.search(r"Second[- ]team", line, re.I) else "all_pro_1st"
+        else:
+            continue
+        out.extend((honor, y) for y in _honor_years(line))
+    return out
 
 
 def parse_highlights(text: str | None) -> dict:

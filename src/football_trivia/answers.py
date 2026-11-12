@@ -38,14 +38,17 @@ from dataclasses import dataclass, field
 
 import polars as pl
 
+from .sources.ap_awards import ALL_PRO_FIRST_SEASON
 from .sources.wikipedia import AP_FIRST_SEASON
 
-TRAIT_KEYS = {"award", "award_any", "stat_threshold", "rookie_stat", "game_stat", "window_stat", "college"}
+TRAIT_KEYS = {"award", "award_any", "stat_threshold", "rookie_stat", "game_stat", "window_stat", "college",
+              "hall_of_fame", "all_pro", "pro_bowl", "draft"}
 MIN_ANSWERS = 25        # per prompt, hard stop (§6)
 TIGHT_MARGIN = 3        # within this many of the minimum: flagged in batch probe and the diff report (§6)
 DAY_AVG_MAX = 300       # average across a day's prompts, warning only (§6)
 QB_LIST_FIRST_SEASON = 1950
 STATS_FIRST_SEASON = 1999
+DRAFT_FIRST_SEASON = 1980    # nflverse draft picks start with the 1980 draft (§5)
 COLLEGE_FIRST_SEASON = 1974  # nflverse colleges cover ~99.6% of players with a 1974+ season, 0% before (§3)
 POSITION_GROUPS = {"QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB", "K", "P", "LS"}
 STATS = {  # stat_threshold names -> raw_player_week expression
@@ -77,8 +80,9 @@ class Prompt:
     @property
     def is_trait(self) -> bool:
         f = self.filters
+        # pro_bowl reads `team` itself (the selection season's team), so it stays a trait prompt
         return self.type == "trait" or (bool(TRAIT_KEYS & f.keys())) and not (
-            "team" in f or "teams_all" in f or "conference" in f or "division" in f)
+            ("team" in f and "pro_bowl" not in f) or "teams_all" in f or "conference" in f or "division" in f)
 
 
 @dataclass
@@ -134,6 +138,11 @@ def _context_where(f: dict, teams: list[str] | None, alias: str = "t") -> tuple[
 AWARD_KEYS = {"award", "award_any"}  # either makes a prompt an award prompt (§7 award group)
 WEEKLY_STAT_KEYS = {"rookie_stat", "game_stat", "window_stat"}  # weekly player stats, 1999+ (§5)
 STAT_KEYS = {"stat_threshold"} | WEEKLY_STAT_KEYS
+HONOR_KEYS = {"hall_of_fame", "all_pro", "pro_bowl", "draft"}  # §5 honors filters (P7)
+# these read `position` themselves (career, honor-season or draft position), not "ever listed there"
+OWN_POSITION_KEYS = HONOR_KEYS
+# awards whose winners need not have played in the NFL: answers must have a counted season (§3)
+PLAY_REQUIRED_AWARDS = {"heisman"}
 
 
 # ---------------------------------------------------------- build_answers
@@ -142,7 +151,8 @@ def build_answers(con, prompt: Prompt) -> Result:
     f = prompt.filters
     unknown = set(f) - {"team", "teams_all", "position", "conference", "division", "league",
                         "season_min", "season_max", "award", "award_any", "stat_threshold", "college",
-                        "rookie_stat", "game_stat", "window_stat", "position_not"}
+                        "rookie_stat", "game_stat", "window_stat", "position_not",
+                        "hall_of_fame", "all_pro", "pro_bowl", "draft"}
     if unknown:
         raise ValueError(f"unknown filters: {sorted(unknown)}")
     warnings: list[str] = []
@@ -163,7 +173,20 @@ def build_answers(con, prompt: Prompt) -> Result:
             warnings.append(f"college prompt: season_min set to {COLLEGE_FIRST_SEASON} (college data starts then)")
         if "1974" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == COLLEGE_FIRST_SEASON:
             warnings.append('college prompt must state the date in its text or subtitle, e.g. "Since 1974"')
-    trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS | STAT_KEYS) & f.keys() else None
+    if "draft" in f:
+        # §5: draft data starts with the 1980 draft; season_min/max are draft years; text must say so
+        if int(f.get("season_min", 0)) < DRAFT_FIRST_SEASON:
+            f = {**f, "season_min": DRAFT_FIRST_SEASON}
+            warnings.append(f"draft prompt: season_min set to {DRAFT_FIRST_SEASON} (draft data starts then)")
+        if "1980" not in f"{prompt.text} {prompt.subtitle}" and int(f["season_min"]) == DRAFT_FIRST_SEASON:
+            warnings.append('draft prompt must state the date in its text or subtitle, e.g. "Since 1980"')
+    if f.get("all_pro") and int(f.get("season_min", 0)) < ALL_PRO_FIRST_SEASON:
+        # §5: AP All-Pro season pages parse from 1968
+        f = {**f, "season_min": ALL_PRO_FIRST_SEASON}
+        warnings.append(f"all_pro prompt: season_min set to {ALL_PRO_FIRST_SEASON} (AP team pages parse from then)")
+        if "1968" not in f"{prompt.text} {prompt.subtitle}":
+            warnings.append('all_pro prompt must state the date in its text or subtitle, e.g. "Since 1968"')
+    trait_ids = _trait_players(con, f, warnings) if (AWARD_KEYS | STAT_KEYS | HONOR_KEYS) & f.keys() else None
     if "college" in f:  # §3 college: the trait narrows the pool, validity still needs play
         college_ids = _college_players(con, f["college"], warnings)
         trait_ids = college_ids if trait_ids is None else trait_ids & college_ids
@@ -296,7 +319,87 @@ def _trait_players(con, f: dict, warnings: list[str]) -> set[str]:
         sets.append(ids)
     for key in WEEKLY_STAT_KEYS & f.keys():
         sets.append(set(weekly_stat_qualifiers(con, f, key)["player_id"].to_list()))
+    for key in HONOR_KEYS & f.keys():
+        sets.append(set(honor_qualifiers(con, f, key)["player_id"].to_list()))
+    if PLAY_REQUIRED_AWARDS & {a.lower() for a in _as_list(f.get("award", [])) + _as_list(f.get("award_any", []))}:
+        sets.append(_played(con, f))
     return set.intersection(*sets) if sets else set()
+
+
+def _played(con, f: dict) -> set[str]:
+    """§3 validity for traits that don't imply NFL play (Heisman, draft): a counted regular-season
+    season; for a QB-only prompt, a start."""
+    qb = "position" in f and [p.upper() for p in _as_list(f["position"])] == ["QB"]
+    cond = "qb_starts > 0" if qb else "(counted OR qb_starts > 0)"
+    return {r[0] for r in con.execute(
+        f"SELECT DISTINCT player_id FROM player_team_seasons WHERE {cond} AND coalesce(league, 'NFL') <> 'AAFC'").fetchall()}
+
+
+def honor_qualifiers(con, f: dict, key: str) -> pl.DataFrame:
+    """Players meeting one honors filter (§5), with evidence for the context line.
+    hall_of_fame: player_id, class, groups (inducted position groups), first/last season ·
+    all_pro / pro_bowl: player_id, seasons (selection seasons in the window, listed position that
+    season; pro_bowl with `team`: the team he played most games for that season) ·
+    draft: player_id, season, round, pick, position (draft position; season_min/max = draft years)."""
+    smin, smax = int(f.get("season_min", 0)), int(f.get("season_max", 9999))
+    pos = f.get("position")
+    if key == "hall_of_fame":
+        # inducted as a player (coaches/contributors who also played, e.g. Bill Cowher, are out);
+        # position = the position(s) he was inducted at, not roster data (which lists pre-modern
+        # two-way ends like Don Hutson as DL)
+        df = con.sql("""
+            SELECT h.player_id, h.class, h.groups, min(t.season) AS first_season, max(t.season) AS last_season
+            FROM player_hof h JOIN player_team_seasons t USING (player_id)
+            WHERE (t.counted OR t.qb_starts > 0) AND coalesce(t.league, 'NFL') <> 'AAFC'
+            GROUP BY ALL""").pl()
+        df = df.filter((pl.col("last_season") >= smin) & (pl.col("first_season") <= smax))
+        if pos:
+            want = [p.upper() for p in _as_list(pos)]
+            df = df.filter(pl.col("groups").list.eval(pl.element().is_in(want)).list.any())
+        return df
+    if key in ("all_pro", "pro_bowl"):
+        honor = "all_pro_1st" if key == "all_pro" else "pro_bowl"
+        team = f.get("team") if key == "pro_bowl" else None
+        teams = [t.upper() for t in _as_list(team)] if team else None
+        df = con.sql(f"""
+            WITH main AS (  -- the selection season's team: most games that season, then latest listed
+                SELECT player_id, season, franchise, pos_group, position, depth_chart_position
+                FROM player_team_seasons WHERE (counted OR qb_starts > 0) AND coalesce(league, 'NFL') <> 'AAFC'
+                QUALIFY row_number() OVER (PARTITION BY player_id, season ORDER BY games DESC NULLS LAST, franchise) = 1),
+            x AS (  -- All-Pro: the AP position slot (edge rusher / flex: his listed group); Pro Bowl: listed group
+                SELECT h.player_id, h.season, t.franchise, t.position, t.depth_chart_position,
+                       CASE WHEN h.slot IS NULL OR h.slot_group = 'roster' THEN t.pos_group ELSE h.slot_group END AS pos_group,
+                       h.slot IS NOT NULL AND h.slot_group IS NULL AS special_teams
+                FROM player_honor_seasons h JOIN main t USING (player_id, season)
+                WHERE h.honor = '{honor}' AND h.season BETWEEN {smin} AND {smax})
+            SELECT * FROM x WHERE true
+              {f"AND x.franchise IN ({', '.join(map(repr, teams))})" if teams else ""}
+              {"AND NOT x.special_teams AND " + _position_clause(pos, "x") if pos else ""}""").pl()
+        return df.group_by("player_id").agg(seasons=pl.col("season").unique().sort())
+    if key == "draft":
+        spec = f["draft"]
+        w = [f"d.season BETWEEN {smin} AND {smax}"]
+        if "pick" in spec:
+            w.append(f"d.pick = {int(spec['pick'])}")
+        if "pick_max" in spec:
+            w.append(f"d.pick <= {int(spec['pick_max'])}")
+        if "round" in spec:
+            w.append(f"d.round = {int(spec['round'])}")
+        if pos:
+            w.append(_position_clause(pos, "d"))
+        df = con.sql(f"""
+            WITH x AS (
+                SELECT p.player_id, d.season, d.round, d.pick, d.position,
+                       coalesce(g.pos_group, d.position) AS pos_group, d.position AS depth_chart_position
+                FROM raw_draft_picks d
+                JOIN players p ON (d.gsis_id IS NOT NULL AND d.gsis_id = p.gsis_id)
+                               OR (d.pfr_player_id IS NOT NULL AND d.pfr_player_id = p.pfr_id)
+                LEFT JOIN position_groups g ON g.code = d.position)
+            SELECT DISTINCT player_id, season, round, pick, position FROM x d
+            WHERE {" AND ".join(w)}""").pl()
+        played = _played(con, f)
+        return df.filter(pl.col("player_id").is_in(list(played)))
+    raise ValueError(key)
 
 
 def weekly_stat_rows(con, f: dict, stat: str) -> pl.DataFrame:
@@ -372,7 +475,7 @@ def _college_players(con, college, warnings: list[str]) -> set[str]:
 
 def _trait_answers(con, ids: set[str], f: dict) -> pl.DataFrame:
     df = pl.DataFrame({"player_id": sorted(ids)}, schema={"player_id": pl.Utf8})
-    if "position" in f:
+    if "position" in f and not OWN_POSITION_KEYS & f.keys():
         con.register("_ids", df.to_arrow())
         df = con.sql(f"""SELECT DISTINCT t.player_id FROM player_team_seasons t
                          WHERE t.player_id IN (SELECT player_id FROM _ids) AND {_position_clause(f['position'])}""").pl()

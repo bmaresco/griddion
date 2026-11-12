@@ -74,6 +74,8 @@ Rarity = **how deep a pull this player is for this specific question**, as an ob
 |---|---|
 | **nflverse** (`nflreadpy`) | Rosters, games, season stats, player IDs/cross-refs, names; QB starts for GB and LAR 1999+ and as the cross-check elsewhere |
 | **Wikipedia** (CC BY-SA) | Awards (MVP, OPOY, DPOY, OROY, DROY), Pro Bowl / All-Pro, Hall of Fame |
+| **Wikipedia list pages** (CC BY-SA, `raw_ap_award_pages`) | The six AP award pages; **Super Bowl Most Valuable Player Award** (game year − 1 = season; 61 rows, co-MVPs in XII); **List of Heisman Trophy winners**; **List of Pro Football Hall of Fame inductees** (inducted as a player vs coach/contributor, and the position inducted at); **"{season} All-Pro Team"** pages 1968→ (AP first team with its position slot). Pro Bowl seasons come from infobox highlights (years listed on > 99.8% of lines) |
+| **nflverse draft picks** (1980+) | Draft filter: season, round, pick, position only. Its PFR-derived columns (AV, Pro Bowls, All-Pro, HOF) are **never used** (§4 PFR rule) |
 | **Wikipedia "List of [team] starting quarterbacks"** (CC BY-SA, all 32 franchises) | QB starts, **primary source for every season** (see §3). Cross-checked against nflverse; mismatches flagged |
 | **`data/team_alignment.csv`** (hand-maintained, reviewable) | League, conference and division per franchise-season, 1950→now, including the AFL 1960–69 |
 | **nflverse colleges** (draft picks 1980+, players table, rosters) | Final college per player (`player_college`). Priority: draft picks (college at the draft) > nflverse players `college_name` > latest roster row. Multi-school strings list the final school first; only that one is kept |
@@ -130,6 +132,12 @@ Supported filter types (build as a reusable library):
   - **Coverage (checked 2026-11-11):** sacks (half sacks included) and INTs are present every season since 1999 (Strahan 2001 22.5, Allen 2011 22, Watt 2021 22.5, Reed 2004 9, Bailey 2006 10, Diggs 2021 11 all match). **Three games are missing entirely** from nflverse's weekly player stats: 1999 Wk 1 BAL@STL, 2000 Wk 3 SD@KC, 2000 Wk 6 BUF@MIA (e.g. Kevin Carter's 1999 total reads 15 vs the official 17). Rows with no player are uncredited team sacks and never answers.
   - Weekly stat prompts are trait prompts (A = 1) in the **stat** threshold group (§7).
 - `college` (a school or list of schools: final college attended, §3). `build_answers` clamps `season_min` to **1974** and `/probe` warns if the text doesn't say "1974". College prompts are trait prompts (A = 1) in the **college** threshold group (§7)
+- **Honors filters** (added 2026-11-11, P7). Trait prompts (A = 1) in the **award** threshold group (§7). Each reads `position` itself:
+  - `hall_of_fame: true`: inducted **as a player** (the inductee list, not the HOF category, which also holds coaches who played: Bill Cowher was showing up as a HOF LB). `position` = the position(s) he was **inducted at** ("Defensive end/linebacker" counts for DL and LB), because roster data lists pre-modern two-way ends as DL (Don Hutson, Pete Pihos). `season_min`/`max`: played a counted season in the window. 335 inductees matched; Johnny Blood (1925–39) isn't (his nflverse name is "Johnny (Blood) McNally"). 11 old-timers whose article never linked in identity are matched by exact name among unlinked players.
+  - `all_pro: true`: **AP first team** only, from the season All-Pro Team pages (**1968+**: `build_answers` clamps and warns unless the text says 1968). `position` = the AP slot (edge rusher and flex: his listed group that season). Special teams, returners and long snappers never count for a position. Infobox "All-Pro" lines mix PFWA/Sporting News picks and special-teams selections without saying so (infobox: 62 All-Pro WRs since 2000; AP: 32), so they are kept only as `all_pro_*_infobox` rows for comparison.
+  - `pro_bowl: true`: Pro Bowl seasons from infobox years (NFL Europe, CFL, USFL, XFL, UFL, Arena and AAFC lines dropped). With `team`, the selection season's team = the team he played the most games for that season (`team` doesn't make it a team prompt).
+  - `award: "sb_mvp"` / `"heisman"`: from their list pages. **Heisman answers must have played an NFL regular-season game** (§3; QB-only prompts: a start). 78 of 91 winners did; the 11 who didn't are unmatched by design (Berwanger, Kinnick, Davis, Ward, Crouch, White, …).
+  - `draft: {"pick": n} | {"pick_max": n} | {"round": n}`: nflverse draft picks, **1980+** (clamp + warning unless the text says 1980). `season_min`/`max` are **draft years**, `position` is the **draft position**, and answers must have played a game (QB-only: a start).
 
 `type` is one of: `team`, `era`, `two_team`, `trait`. It determines how association is calculated.
 
@@ -225,6 +233,21 @@ The UI picks today's drive from **the current date in America/New_York** (everyo
   "all_player_names": { "Andy Dalton": ["00-0027973"], … } }
 ```
 `all_player_names` (~2 MB raw, much smaller gzipped) lets the UI reject a real player who isn't valid for the prompt, and stop a typo from snapping to a valid answer when another real player is at least as close. Names are compared after normalization (lowercase, accents and punctuation removed, suffixes like Jr./III dropped, runs of initials joined: `Y. A.` → `ya`), exactly as `names.norm_name`.
+
+### Slot plan (decided 2026-11-11)
+The two-team slots are gone. Drives 1–2 stay frozen as published; Drives 3–14 get rebuilt on this plan once every slot is designed.
+
+| Slot | Prompt type | Threshold group |
+|---|---|---|
+| P1, P2 | team / division (unchanged) | other |
+| **P3** | **college**: school + position (`college`), "Since 1974" | college |
+| **P4** | **new stat types**: `rookie_stat`, `game_stat`, `window_stat` (+ `position_not`), "Since 1999" | stat |
+| P5 | era (unchanged) | other |
+| P6 | single-season stats (`stat_threshold`), as before | stat |
+| **P7** | **honors**: AP awards + `hall_of_fame`, `all_pro`, `pro_bowl`, Super Bowl MVP, Heisman, `draft` | award |
+
+- **P4 pool** (`prompts/weekly_stat_probe.jsonl`, probed 2026-11-11, stat thresholds). 21 of 32 pass both publish rules: rookie WR 60+ rec, rookie RB 1,000+ and 800+ rush yds, rookie 7+ sacks, rookie 4+ INT, rookie TE 40+ rec, 3.5+ and 4+ sacks in a game, 2+ and 3+ INT game, 200+ rush yds game, 200+ and 150+ rec yds game, RB 100+ rec yds game, QB 4+ TD game, TE 3+ TD game, non-RB rushing TD (with and without QBs), non-QB TD pass, WR TD pass, DL with an INT. Failing: rookie WR 70+ rec / 900+ yds, rookie QB 20+ TD / 3,000+ yds, QB 5+ TD / 400+ yds / 100+ rush yds game, TE 150+ rec yds game, RB 150+ rec yds game, 4+ rush TD game, K 6+ FG game (famous pools with no Sleepers, or under 25).
+- **P7 pool** (`prompts/honors_probe.jsonl`, award thresholds). 19 of 23 pass. Failing: All-Pro TE since 2000 (12 answers), All-Pro WR since 2000 (32, 0 Sleepers), All-Pro WR since 1990 (2 Sleepers).
 
 ### Scheduling and publish flow
 - **`prompts/schedule.json`** maps each drive to its 7 prompt ids and date. `uv run publish schedule --launch YYYY-MM-DD` writes it from the prompt queue (queue Day d → Drive #d).
@@ -344,7 +367,7 @@ Set once, objectively:
 
 | Group | Prompts | Calibration set |
 |---|---|---|
-| award | trait prompts with an `award` or `award_any` filter | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
+| award | trait prompts with an `award` or `award_any` filter, or an honors filter (`hall_of_fame`, `all_pro`, `pro_bowl`, `draft`) | all six AP awards (MVP, OPOY, DPOY, OROY, DROY, Comeback) |
 | stat | trait prompts with a `stat_threshold`, `rookie_stat`, `game_stat` or `window_stat` | 10+ sacks, RB 1,000+ rushing, TE 800+ receiving, QB 4,000+ passing, DB 5+ INT, WR 100+ receptions |
 | college | trait prompts with a `college` filter | 8 school + position prompts with 40+ answers: Ohio State WR, LSU DB, Miami (FL) LB, Florida State DB, Penn State LB, Notre Dame OL, USC WR, Michigan DL |
 | other | everything else | 15 prompts: 6 easy, 6 two-team (live versions), 3 era |
@@ -364,6 +387,7 @@ Reasons:
 | stat | 0.5542 | 0.3114 | 0.1945 | below 0.1945 |
 | college | 0.3696 | 0.1587 | 0.0676 | below 0.0676 |
 
+- **Honors filters use the award group (decided 2026-11-11).** `hall_of_fame`, `all_pro`, `pro_bowl` and `draft` route to award (F = s_pv) like Super Bowl MVP and Heisman (which are `award` values). On 23 probes: award thresholds pass 19 (failures are pool size: All-Pro TE/WR); stat thresholds pass 5 (honors pools are famous, like award winners: Super Bowl MVP 13 · 27 · 9 · 0, #1 pick 6 · 26 · 14 · 0); calibrating the honors probes as their own group (0.6454 / 0.4246 / 0.2910) passes 18 and drops Super Bowl MVP and first-round QB below 3 Sleepers. So no new group; award's frozen values are unchanged.
 - **Weekly stat filters use the stat group (decided 2026-11-11).** On the 9 probe prompts with 25+ answers (`prompts/weekly_stat_probe.jsonl`), the stat thresholds give a pooled 10 / 30 / 34 / 26% (target 10 / 35 / 35 / 20), and calibrating those prompts alone would give 0.5487 / 0.2950 / 0.1741, within ~0.02 of the stat values. Failures come from the pool (famous QBs: QB 5+ TD game 9 · 38 · 9 · 0), not the scale, so no new group.
 - **College group added 2026-11-11** (`--groups college`; the other groups keep their values). College pools are every player from a school at a position, with no production bar, so they run deeper than stat pools (stat qualifiers all had a big season): on the stat thresholds Miami (FL) any position came out 7 · 22 · 42 · 273 and LSU DB 2 · 5 · 13 · 48; on "other" (A = 1 inflates R) Ohio State WR got 0 Sleepers. Calibration set: 8 prompts / 463 answers, same 10/35/35/20 split, equal per-prompt weighting; Alabama RB and Georgia RB (39 each) missed the 40-answer bar. Spread (Starter · Backup · Hidden Gem · Sleeper + YKB Kid): Ohio State WR 7 · 22 · 17 · 3 + Reggie Germany, LSU DB 6 · 19 · 22 · 21 + Anthony Marshall, Miami (FL) LB 5 · 19 · 20 · 9 + Spencer Adkins, Florida State DB 5 · 21 · 17 · 11 + Walt Sumner, Penn State LB 7 · 22 · 30 · 17 + Glenn Carson, Notre Dame OL 5 · 22 · 22 · 17 + Mike Brennan, USC WR 6 · 17 · 15 · 11 + Will Buchanon, Michigan DL 4 · 16 · 18 · 2 + Kerwin Waldroup (fails the ≥ 3 Sleeper rule; don't ship as is).
 

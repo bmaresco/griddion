@@ -8,18 +8,22 @@ Tables produced
   qb_starts        starting QB per team-game (1999+)
   player_awards    long table: player_id, award, season
   player_honors    pro bowls, all-pro, HOF, award counts, pageviews
+  player_honor_seasons  player x Pro Bowl / All-Pro season (infobox years)
+  player_hof       HOF inductees inducted as players: class, inducted position(s) and groups
   aliases          generated from nflverse name fields
   coverage         per-season data availability report
 """
 
 from __future__ import annotations
 
+import re
+
 import polars as pl
 
 from .db import DATA_DIR, run, table_exists, write_table
 from .names import norm_name
 from .sources import ap_awards, qb_lists
-from .sources.wikipedia import parse_highlights
+from .sources.wikipedia import honor_seasons, parse_highlights
 
 
 def _franchise_sql(code: str, season: str) -> str:
@@ -246,15 +250,17 @@ def _honors(con, log) -> None:
     pages = con.sql("""
         SELECT p.player_id, w.highlights, w.is_hof
         FROM players p JOIN raw_wiki_pages w ON w.title = p.wiki_title""").pl()
-    awards, rows = [], []
+    awards, rows, honor_rows = [], [], []
     for pid, text, hof in pages.iter_rows():
         h = parse_highlights(text)
+        honor_rows.extend({"player_id": pid, "honor": k, "season": s} for k, s in honor_seasons(text))
         rows.append({"player_id": pid, "pro_bowls": h["pro_bowls"], "all_pro_1st": h["all_pro_1st"],
                      "all_pro_2nd": h["all_pro_2nd"], "afl_all_star": h["afl_all_star"], "hof": bool(hof),
                      "has_highlights": text is not None})
         awards.extend({"player_id": pid, "award": k, "season": s} for k, s in h["awards"])
     infobox = pl.DataFrame(awards, schema={"player_id": pl.Utf8, "award": pl.Utf8, "season": pl.Int32})
-    # the six AP awards come from the AP award pages (spec §5: AP only); infoboxes keep the rest
+    # the six AP awards, Super Bowl MVP and the Heisman come from their list pages (spec §5: AP
+    # only); infoboxes keep the rest
     ap = ap_awards.parse_all(con)
     redirects = dict(con.execute("SELECT link_title, canonical_title FROM raw_ap_award_redirects").fetchall())
     by_title = dict(con.execute("SELECT wiki_title, player_id FROM players WHERE wiki_title IS NOT NULL").fetchall())
@@ -265,9 +271,46 @@ def _honors(con, log) -> None:
         log(f"  AP winners not matched to a player: {unmatched.select('award', 'season', 'name').rows()}")
     awards_df = pl.concat([
         infobox.filter(~pl.col("award").is_in(list(ap_awards.PAGES) + ["roy"])).with_columns(source=pl.lit("infobox")),
-        ap.filter(pl.col("player_id").is_not_null()).select("player_id", "award", "season").with_columns(source=pl.lit("ap_list")),
+        ap.filter(pl.col("player_id").is_not_null()).select("player_id", "award", "season").with_columns(source=pl.lit("list")),
     ])
     write_table(con, "player_awards", awards_df)
+    # Hall of Fame inductees inducted as players, with the position(s) they were inducted at (§5)
+    # fallback for players whose article never linked in identity (old-timers with no Wikidata
+    # crosswalk): the link title equals the display name of exactly one player with no article
+    unlinked: dict[str, list[str]] = {}
+    for pid, name in con.execute("SELECT player_id, display_name FROM players WHERE wiki_title IS NULL").fetchall():
+        unlinked.setdefault(norm_name(name), []).append(pid)
+
+    def hof_pid(t: str) -> str | None:
+        hit = by_title.get(redirects.get(t, t)) or by_title.get(t)
+        if hit:
+            return hit
+        c = unlinked.get(norm_name(re.sub(r"\s*\(.*?\)", "", redirects.get(t, t))), [])
+        return c[0] if len(c) == 1 else None
+    hof = ap_awards.parse_hof(con).with_columns(
+        player_id=pl.col("wiki_title").map_elements(hof_pid, return_dtype=pl.Utf8),
+        groups=pl.col("position").map_elements(ap_awards.hof_groups, return_dtype=pl.List(pl.Utf8)))
+    players_hof = (hof.filter(pl.col("player_id").is_not_null()).group_by("player_id")
+                   .agg(pl.col("class").min(), pl.col("position").unique().sort(), pl.col("groups").list.explode(keep_nulls=False, empty_as_null=False).unique().sort())
+                   .filter(pl.col("groups").list.len() > 0))
+    unmatched_hof = hof.filter(pl.col("player_id").is_null() & (pl.col("groups").list.len() > 0))["name"].unique().sort().to_list()
+    log(f"  HOF: {players_hof.height} inducted as players and matched; unmatched players: {unmatched_hof}")
+    write_table(con, "player_hof", players_hof)
+    # per-season honors for the filters (§5): Pro Bowl from infobox years; first-team All-Pro from
+    # the AP season pages (AP only, with the position slot, so a special-teams pick never counts as
+    # an LB/DB/WR All-Pro). Infobox All-Pro rows are kept as all_pro_*_infobox for comparison only.
+    ib = pl.DataFrame(honor_rows, schema={"player_id": pl.Utf8, "honor": pl.Utf8, "season": pl.Int32}).with_columns(
+        honor=pl.when(pl.col("honor").str.starts_with("all_pro")).then(pl.col("honor") + "_infobox").otherwise(pl.col("honor")),
+        slot=pl.lit(None, pl.Utf8), slot_group=pl.lit(None, pl.Utf8))
+    ap_teams = ap_awards.parse_all_pro(con).with_columns(
+        player_id=pl.col("wiki_title").map_elements(hof_pid, return_dtype=pl.Utf8),
+        slot_group=pl.col("slot").map_elements(ap_awards.all_pro_group, return_dtype=pl.Utf8))
+    miss = ap_teams.filter(pl.col("player_id").is_null())
+    log(f"  AP All-Pro first team: {ap_teams.height} selections, {ap_teams['season'].n_unique()} seasons; "
+        f"unmatched {miss.height}: {miss.select('season', 'name').rows()[:15]}")
+    write_table(con, "player_honor_seasons", pl.concat([
+        ib, ap_teams.filter(pl.col("player_id").is_not_null())
+              .select("player_id", pl.lit("all_pro_1st").alias("honor"), "season", "slot", "slot_group")]).unique())
     write_table(con, "_honors", pl.DataFrame(rows))
     run(con, """
     CREATE OR REPLACE TABLE player_honors AS
