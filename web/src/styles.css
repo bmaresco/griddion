@@ -35,7 +35,13 @@ button { font: inherit; color: inherit; }
 }
 .hdr { height: 26px; background: var(--red); display: flex; justify-content: space-between; align-items: center; padding: 0 8px; color: var(--cream); }
 .hdr .logo { font-size: 16px; letter-spacing: 2px; }
+.hdr-r { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.hdr .rec { white-space: nowrap; }
+.mute { flex: none; display: flex; align-items: center; justify-content: center; width: 24px; height: 26px; margin-right: -6px; padding: 0; background: none; border: 0; color: var(--cream); cursor: pointer; }
+.mute:hover { color: var(--hi); }
+.mute:focus-visible { outline: 2px solid var(--hi); outline-offset: -3px; }
 .hdr .rec, .jfoot { font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+@media (max-width: 1099px) { .hdr { padding: 0 6px; overflow: hidden; } .hdr .logo { letter-spacing: 1px; } .hdr .rec { letter-spacing: 0; font-size: 12px; } }
 .screen {
   min-height: 160px; background-color: #050505;
   background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.3px); background-size: 3px 3px;

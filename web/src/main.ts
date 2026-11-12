@@ -1,6 +1,7 @@
 // Griddion app: screens, game flow, timer, resume, share. Mobile-first 390px column.
 import './styles.css';
 import { TIERS, LEGEND_ORDER, RULES, driveState, yardsOnPlay, ballSpot, clockText, shareText, playCell, MAX_POINTS, type PlayRecord, type Tier } from './game';
+import { preloadSound, unlockSound, sfx, isMuted, setMuted } from './sound';
 import { now, setMockNow, todayET, msUntilMidnightET, daysBetween } from './clock';
 import { load, save, store, displayStreak, recordFinish } from './storage';
 import { loadSchedule, loadDay, loadMatchData, matcherFor, type Day, type Prompt, type Answer, type Schedule } from './data';
@@ -50,8 +51,26 @@ function stopTimer() { if (tick) { clearInterval(tick); tick = 0; } }
 
 function header(): string {
   const st = store().stats;
-  return `<div class="hdr"><span class="silk logo">GRIDDION</span><span class="rec">STREAK ${displayStreak(driveNo)} · ${st.wins}W ${st.losses}L</span></div>`;
+  return `<div class="hdr"><span class="silk logo">GRIDDION</span><span class="hdr-r"><span class="rec">STREAK ${displayStreak(driveNo)} · ${st.wins}W ${st.losses}L</span>${muteButton()}</span></div>`;
 }
+
+// Pixel speaker icon (16×16 grid): waves when sound is on, an X when muted.
+function muteButton(): string {
+  const m = isMuted();
+  const icon = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" shape-rendering="crispEdges" fill="currentColor"><path d="M1 5h3v6H1zM4 5h1V4h1V3h1V2h1v12H7v-1H6v-1H5v-1H4z"/>${m
+    ? '<path d="M10 5h1v1h1v1h1V6h1V5h1v1h-1v1h-1v2h1v1h1v1h-1v-1h-1V9h-1v1h-1v1h-1v-1h1V9h1V7h-1V6h-1z"/>'
+    : '<path d="M10 6h1v4h-1zM12 4h1v1h1v6h-1v1h-1v-1h1V5h-1z"/>'}</svg>`;
+  return `<button type="button" class="mute" aria-label="${m ? 'Unmute sound' : 'Mute sound'}" aria-pressed="${m}">${icon}</button>`;
+}
+document.addEventListener('click', (e) => {
+  const b = (e.target as Element).closest('.mute');
+  if (!b) return;
+  setMuted(!isMuted());
+  document.querySelectorAll('.mute').forEach((el) => { el.outerHTML = muteButton(); });
+  inputEl()?.focus({ preventScroll: true });
+});
+// Audio can only start inside a user gesture; the first tap or key anywhere (normally "Break the huddle") unlocks it.
+for (const ev of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(ev, unlockSound, { capture: true, passive: true });
 
 function top(screen: string, foot: string): string {
   return `<div class="top">${stadium(Math.min(390, document.documentElement.clientWidth))}<div class="post" style="left:92px" aria-hidden="true"></div><div class="post" style="right:92px" aria-hidden="true"></div>
@@ -222,6 +241,7 @@ function playScreen() {
   matcherFor(p); // warm the matcher
 }
 
+let lastSecs = -1; // for the last-5-seconds tick
 function updateTimer() {
   const g = game();
   if (g.phase !== 'play' || g.deadline === null) return;
@@ -230,6 +250,7 @@ function updateTimer() {
   const segs = document.querySelectorAll('#timer .segs i');
   segs.forEach((el, k) => el.classList.toggle('on', k < secs));
   document.getElementById('timer')?.classList.toggle('low', secs <= 5);
+  if (secs !== lastSecs) { if (secs > 0 && secs <= 5 && lastSecs !== -1) sfx.tick(); lastSecs = secs; }
   const txt = clockText(secs);
   for (const id of ['secs', 'minisecs']) { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; }
   if (msLeft <= 0) expire();
@@ -291,6 +312,7 @@ function wrongGuess() {
   if (!input) return;
   input.value = '';
   input.focus({ preventScroll: true });
+  sfx.buzzer();
   const row = input.closest('.row')!;
   row.classList.remove('shake');
   void (row as HTMLElement).offsetWidth; // restart the animation
@@ -353,7 +375,9 @@ function record(rec: PlayRecord) {
   g.phase = 'result';
   g.deadline = null;
   save();
+  sfx.whistle();
   render();
+  window.setTimeout(() => sfx.tier(rec.tier), 380);
 }
 
 // ---------------------------------------------------------------- result
@@ -419,8 +443,10 @@ function advance() {
   if (g.plays.length >= RULES.plays) {
     g.phase = 'done';
     save();
-    recordFinish(driveNo, driveState(g.plays).tdPlay !== null);
+    const td = driveState(g.plays).tdPlay !== null;
+    recordFinish(driveNo, td);
     render();
+    window.setTimeout(() => (td ? sfx.touchdown() : sfx.stalled()), 250);
   } else startPlay();
 }
 
@@ -620,6 +646,7 @@ window.matchMedia('(min-width: 1100px)').addEventListener('change', () => {
 
 async function boot() {
   stopTimer();
+  preloadSound();
   fitWidth();
   const params = new URLSearchParams(location.search);
   if (import.meta.env.DEV) {
